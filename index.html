@@ -1,0 +1,1513 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Realm of Neya</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Itim&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f8f1e6;
+    --page: #ece5da;
+    --ink: #46403a;
+    --muted: #8a8076;
+    --gold: #a8803a;
+    --line: #ddd3c4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #2a2622;
+      --page: #1d1a17;
+      --ink: #e9e0d2;
+      --muted: #a39887;
+      --gold: #d4ae6a;
+      --line: #3d3731;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--ink);
+    font-family: "Itim", "Mali", system-ui, sans-serif;
+    font-size: 18px;
+    line-height: 1.6;
+  }
+
+  .book {
+    max-width: 620px;
+    margin: 0 auto;
+    padding: 0 16px 64px;
+  }
+
+  .sheet {
+    background: var(--paper);
+    padding: 28px 24px;
+    margin: 24px 0;
+    border-radius: 4px;
+    box-shadow: 0 1px 4px rgb(0 0 0 / 0.12);
+  }
+
+  img { display: block; width: 100%; height: auto; border-radius: 3px; }
+  figure { margin: 24px 0; }
+  .cover img { box-shadow: 0 2px 10px rgb(0 0 0 / 0.25); }
+  .portrait { max-width: 380px; margin-left: auto; margin-right: auto; }
+
+  .map-scroll {
+    overflow-x: auto;
+    border-radius: 3px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .map-scroll svg { display: block; width: 100%; height: auto; }
+  /* Wider than the text column on big screens; negative margins keep it centred
+     without making the page scroll sideways on phones. */
+  .map-figure {
+    width: min(calc(100vw - 32px), 1100px);
+    margin-left: calc((100% - min(calc(100vw - 32px), 1100px)) / 2);
+  }
+  .map-tip { text-align: center; color: var(--muted); font-size: 0.85em; margin: 4px 0 0; }
+  .map-hint { text-align: center; color: var(--muted); font-size: 0.85em; margin-top: 6px; }
+  @media (max-width: 899px) { .map-scroll svg { min-width: 900px; } }
+  @media (min-width: 900px) { .map-hint { display: none; } }
+
+  /* Interactive map (behaviour in map.js) */
+  .realm { fill: transparent; stroke: transparent; stroke-width: 3; cursor: pointer; transition: fill 0.2s; }
+  .realm:hover { fill: rgb(255 255 255 / 0.22); stroke: #fff8ec; }
+  .realm.selected { fill: rgb(255 240 200 / 0.3); stroke: #c9973f; stroke-width: 5; }
+  .realm.taken { fill: rgb(190 40 40 / 0.38); }
+  .realm.battle { fill: rgb(230 120 40 / 0.38); }
+  .lm { cursor: pointer; }
+  .token { pointer-events: none; }
+  .token circle { stroke: #fff8ec; stroke-width: 3; filter: drop-shadow(0 2px 3px rgb(0 0 0 / 0.4)); }
+  .token.foe circle { stroke: #ffd6d6; }
+  .token text { font-family: Itim, sans-serif; font-size: 20px; fill: #fff; }
+
+  .realm-card {
+    position: fixed;
+    z-index: 8;
+    left: 50%;
+    bottom: 16px;
+    transform: translateX(-50%);
+    width: min(440px, calc(100vw - 32px));
+    max-height: 70vh;
+    overflow-y: auto;
+    background: var(--paper);
+    border-radius: 10px;
+    padding: 18px 20px;
+    box-shadow: 0 6px 30px rgb(0 0 0 / 0.35);
+    font-size: 16px;
+  }
+  .realm-card[hidden] { display: none; }
+  .realm-card h3 { margin: 0; color: var(--gold); font-size: 1.2em; }
+  .realm-card p { margin: 0 0 0.6em; }
+  .card-top { display: flex; gap: 14px; align-items: center; margin-bottom: 12px; padding-right: 24px; }
+  .card-top img, .card-top .crest {
+    width: 76px; height: 96px; object-fit: cover; object-position: top;
+    border-radius: 8px; flex: none; box-shadow: 0 1px 4px rgb(0 0 0 / 0.25);
+  }
+  .card-top .crest { display: grid; place-items: center; font-size: 40px; background: var(--page); }
+  .card-ruler { color: var(--muted); margin: 2px 0 0 !important; }
+  .card-places { color: var(--muted); font-size: 0.92em; }
+  .card-story { background: var(--page); border-radius: 6px; padding: 8px 10px; }
+  .card-more { color: var(--gold); text-decoration: none; font-size: 0.95em; }
+  .card-close {
+    position: absolute; top: 8px; right: 10px;
+    border: none; background: none; color: var(--muted);
+    font-size: 28px; line-height: 1; cursor: pointer;
+  }
+
+  .tracker { text-align: center; margin: 4px 0 24px; }
+  .tracker button {
+    font: inherit; color: var(--ink); background: var(--paper);
+    border: 1px solid var(--line); border-radius: 999px; cursor: pointer;
+  }
+  .tracker-toggle { padding: 8px 18px; box-shadow: 0 1px 4px rgb(0 0 0 / 0.12); }
+  .tracker-toggle[aria-expanded="true"] { border-color: var(--gold); color: var(--gold); }
+  .tracker-body { background: var(--paper); border-radius: 4px; margin-top: 12px; padding: 16px 18px; text-align: left; box-shadow: 0 1px 4px rgb(0 0 0 / 0.12); }
+  .tracker-body[hidden], .tracker-lock[hidden], .tracker-info[hidden] { display: none; }
+  .tracker-row { display: flex; align-items: center; gap: 10px; }
+  .tracker-row input { flex: 1; accent-color: var(--gold); }
+  .tracker-step { width: 36px; height: 36px; font-size: 20px !important; }
+  .tracker-title { text-align: center; color: var(--gold); margin: 10px 0 4px; }
+  .tracker-note { margin: 0 0 8px; }
+  .tracker-who { margin: 0 0 8px; padding-left: 18px; font-size: 0.92em; }
+  .tracker-lock { text-align: center; color: var(--muted); }
+  .tracker-peek { padding: 6px 14px; }
+  .tracker-key { color: var(--muted); font-size: 0.85em; margin: 0; }
+  .key { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-left: 6px; }
+  .key.taken { background: rgb(190 40 40 / 0.6); }
+  .key.battle { background: rgb(230 120 40 / 0.6); }
+
+  .dedication {
+    text-align: center;
+    padding: 56px 24px;
+    color: var(--muted);
+  }
+  .dedication p { margin: 0 0 0.4em; }
+
+  h1, h2, h3 { font-weight: 400; line-height: 1.3; }
+  .act-title {
+    text-align: center;
+    color: var(--gold);
+    font-size: 1.5em;
+    margin: 56px 0 8px;
+    letter-spacing: 0.04em;
+  }
+
+  .contents h2 { text-align: center; margin: 0 0 16px; color: var(--gold); }
+  .contents h3 { font-size: 0.95em; color: var(--muted); margin: 20px 0 6px; }
+  .contents ol { list-style: none; padding: 0; margin: 0; }
+  .contents li { padding: 6px 0; border-bottom: 1px dashed var(--line); }
+  .contents a { color: var(--ink); text-decoration: none; display: block; }
+  .contents a:hover { color: var(--gold); }
+
+  .lore h2 { text-align: center; color: var(--gold); margin: 0 0 8px; }
+  .lore h3 { font-size: 1.05em; margin: 22px 0 4px; color: var(--gold); }
+  .lore p { margin: 0; }
+
+  .chapter h2 { font-size: 1.25em; margin: 0 0 18px; }
+  .chapter p { margin: 0 0 0.7em; }
+  .break { text-align: center; color: var(--muted); margin: 1.4em 0; letter-spacing: 0.5em; }
+  .break::before { content: "~ ~ ~"; }
+
+  .chapter-nav {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 28px;
+    padding-top: 16px;
+    border-top: 1px dashed var(--line);
+  }
+  .chapter-nav a {
+    color: var(--gold);
+    text-decoration: none;
+    font-size: 0.95em;
+  }
+  .chapter-nav .next { margin-left: auto; text-align: right; }
+
+  .the-end { text-align: center; color: var(--gold); font-size: 1.3em; margin: 40px 0 8px; }
+
+  /* Floating chapter menu */
+  .menu-btn {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    z-index: 10;
+    width: 44px;
+    height: 44px;
+    border: none;
+    border-radius: 50%;
+    background: var(--paper);
+    color: var(--ink);
+    font-size: 22px;
+    box-shadow: 0 1px 6px rgb(0 0 0 / 0.25);
+    cursor: pointer;
+  }
+  .menu {
+    position: fixed;
+    inset: 0;
+    z-index: 9;
+    background: rgb(0 0 0 / 0.35);
+    display: none;
+  }
+  .menu.open { display: block; }
+  .menu .contents {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(320px, 85vw);
+    overflow-y: auto;
+    margin: 0;
+    border-radius: 0;
+    padding-top: 64px;
+  }
+
+  /* Print is a rough draft until the blank-page measurements arrive. */
+  @media print {
+    :root {
+      --paper: #f8f1e6;
+      --ink: #46403a;
+    }
+    @page { size: A4; margin: 1.7cm 0 0 2.6cm; }
+    body { background: none; font-size: 9.4pt; line-height: 1.5; }
+    .book { max-width: 10.9cm; margin: 0; padding: 0; }
+    .menu-btn, .menu, .chapter-nav, .contents, .tracker, .realm-card { display: none; }
+    .sheet { box-shadow: none; border-radius: 0; padding: 0.6cm 0.8cm; margin: 0 0 0.4cm; }
+    .sheet, img { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    .chapter { break-before: page; }
+    figure { break-inside: avoid; margin: 0 0 0.3cm; }
+  }
+</style>
+</head>
+<body>
+
+<button class="menu-btn" aria-label="Chapters" onclick="toggleMenu()">☰</button>
+<div class="menu" id="menu" onclick="if (event.target === this) toggleMenu()"></div>
+
+<main class="book">
+
+<figure class="cover" id="top">
+  <img src="images/title-cover.jpg" alt="The Realm of Neya: the Empress standing over the sea with her serpents">
+</figure>
+
+<!-- DEDICATION: draft, change the words to your own -->
+<section class="dedication">
+  <p>For you,</p>
+  <p>who was there on the very first page,</p>
+  <p>one birthday ago.</p>
+  <p>&nbsp;</p>
+  <p>Happy birthday.</p>
+</section>
+
+<!-- Filled in by the script at the bottom from the chapters below. -->
+<nav class="sheet contents" id="contents"></nav>
+
+<section id="lore" data-title="The Lore Book">
+  <figure class="cover">
+    <img src="images/lore-book-cover.jpg" alt="Lore Book cover">
+  </figure>
+  <!-- Map is generated by tools/build_map.py; edit landmarks there and re-run. -->
+  <figure class="map-figure">
+<!-- MAP START -->
+<div class="map-scroll">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="50 50 1800 885" role="img" aria-label="Map of the Realm of Neya">
+<image href="images/realm-map.jpg" xlink:href="images/realm-map.jpg" width="1917" height="935"/>
+<style>.lm circle{fill:#c9973f;stroke:#fff8ec;stroke-width:3}.lm text{font-family:Itim,Mali,sans-serif;font-size:17px;fill:#3e3428;paint-order:stroke;stroke:#fff8ec;stroke-width:4px;stroke-linejoin:round}</style>
+<g class="realms">
+<path class="realm" data-k="hangkas" d="M417,321L405,333L402,345L396,345L396,342L363,345L363,348L354,348L348,357L342,357L333,366L327,366L321,360L300,357L300,354L285,354L279,360L243,357L243,360L234,363L231,396L237,399L243,417L267,417L270,420L270,441L273,441L273,456L276,456L279,465L288,465L294,471L312,471L321,483L330,483L342,474L351,477L357,471L369,471L387,486L390,495L423,495L429,501L429,507L438,516L444,516L447,522L480,522L483,516L495,516L501,507L510,504L513,483L522,477L525,450L528,450L537,426L546,420L546,405L543,405L543,393L540,393L543,369L528,366L528,363L516,363L516,360L507,360L507,357L492,357L486,333L477,333L471,342L456,342L447,333L438,333L429,321ZM591,327L567,345L567,351L576,360L585,360L585,363L594,363L603,351L603,336L600,336L597,327Z"/>
+<path class="realm" data-k="naya" d="M111,474L99,480L102,495L96,498L99,519L96,519L96,528L93,528L93,534L96,534L96,561L105,567L105,573L117,585L123,645L141,663L141,681L150,687L150,693L156,699L156,726L159,726L156,747L159,750L180,750L180,753L192,756L195,762L222,765L228,771L240,771L243,777L252,777L258,786L270,786L273,783L273,753L276,753L273,723L282,720L282,717L291,717L300,708L297,690L306,687L315,678L315,657L336,636L348,636L351,642L360,642L363,648L372,648L372,651L384,654L396,639L402,639L414,627L414,615L408,609L408,600L399,597L399,594L357,591L357,588L345,588L336,597L318,600L312,594L312,582L315,582L312,552L309,549L294,549L291,543L285,543L282,534L276,531L276,525L258,510L246,510L231,525L228,537L213,543L204,552L201,564L180,567L174,573L156,573L153,570L153,564L156,564L153,525L162,519L162,507L165,507L162,480L153,477L153,474L129,474L129,477ZM354,708L342,711L330,720L330,732L324,738L324,747L330,753L345,756L348,777L354,783L360,783L372,798L384,798L390,792L390,780L393,780L390,753L405,744L405,732L384,711L357,711Z"/>
+<path class="realm" data-k="opita" d="M477,63L462,69L462,72L432,72L429,84L423,90L423,99L417,102L417,108L408,117L408,132L402,138L396,138L384,129L375,129L375,126L360,126L354,132L330,132L327,135L330,156L324,162L309,162L306,165L306,180L309,180L315,198L324,207L339,207L339,204L357,207L366,198L378,195L381,204L372,207L369,216L381,225L381,231L399,249L420,252L420,249L429,249L429,246L450,246L453,255L465,267L489,264L495,243L504,243L519,264L543,264L543,261L555,258L561,249L570,258L597,258L597,261L615,258L621,249L630,249L636,258L654,258L657,243L651,240L645,207L636,198L636,189L630,186L630,177L621,174L621,171L606,168L609,156L603,153L597,120L588,117L579,105L573,105L540,69L516,72L516,69L507,69L504,63Z"/>
+<path class="realm" data-k="ayaluna" d="M624,90L609,96L612,120L618,123L621,138L630,141L663,174L663,195L669,198L675,213L681,219L699,219L702,222L702,252L708,258L717,258L717,261L726,261L726,264L765,261L765,264L774,264L780,273L786,273L798,258L813,261L822,252L825,243L834,243L846,216L858,216L858,219L867,222L867,228L873,234L873,243L879,246L879,255L915,252L921,246L921,234L906,225L906,219L909,219L906,192L909,189L903,189L903,183L891,174L891,168L882,162L882,156L876,150L870,150L867,144L858,141L855,117L852,117L849,108L828,105L828,102L801,105L801,108L789,111L771,129L756,129L756,126L750,126L738,117L723,120L723,123L699,120L696,117L699,99L690,96L687,90L657,93L657,96L648,96L642,90Z"/>
+<path class="realm" data-k="kz" d="M912,45L906,48L906,57L903,57L906,69L963,66L963,69L984,69L990,78L960,108L954,108L954,90L945,81L927,81L927,84L918,84L918,87L906,87L900,93L900,105L891,117L891,126L900,129L912,141L912,159L918,165L957,162L957,174L951,180L945,180L939,186L909,186L909,192L906,192L906,204L909,204L906,225L912,231L918,231L921,237L933,237L936,231L957,228L957,225L987,228L993,252L996,252L1002,267L1038,267L1041,258L1047,252L1053,252L1071,270L1092,270L1095,267L1095,261L1089,255L1089,243L1092,243L1092,231L1095,231L1092,213L1098,210L1101,201L1110,198L1110,192L1113,192L1110,180L1119,171L1134,165L1134,129L1119,120L1119,111L1113,108L1113,93L1095,75L1089,75L1071,54L1062,54L1062,51L1053,51L1053,48L1035,48L1035,45L993,45L993,48L939,45L939,48L921,48L921,45Z"/>
+<path class="realm" data-k="zav" d="M1380,54L1371,57L1362,72L1350,72L1347,81L1338,81L1329,90L1281,93L1266,105L1263,102L1248,102L1248,105L1239,105L1239,108L1206,102L1206,108L1200,114L1200,120L1203,120L1200,141L1191,153L1191,183L1203,192L1209,207L1227,210L1236,201L1236,204L1254,204L1254,207L1263,207L1263,204L1266,207L1305,204L1305,207L1341,210L1341,213L1374,213L1374,210L1395,207L1401,195L1419,195L1425,189L1458,189L1470,207L1491,207L1491,204L1500,201L1500,195L1506,189L1536,189L1548,204L1563,201L1560,165L1557,162L1542,162L1539,165L1539,162L1518,159L1515,156L1518,138L1512,138L1509,132L1497,129L1494,123L1488,123L1482,117L1479,96L1473,90L1446,84L1443,81L1443,66L1437,66L1437,63L1428,63L1419,72L1410,72L1401,60L1386,60L1386,54Z"/>
+<path class="realm" data-k="kaylee" d="M705,306L702,306L702,318L690,321L690,336L693,336L693,345L696,345L696,354L699,354L696,375L681,381L678,393L669,396L669,414L672,414L669,429L672,429L672,438L678,444L675,471L678,471L681,486L690,495L696,495L699,504L702,504L696,534L702,540L714,540L723,555L735,555L735,558L747,561L771,537L777,537L780,543L813,540L822,552L831,552L831,549L852,549L861,534L906,531L909,522L903,519L900,510L885,510L870,498L873,483L864,474L855,471L855,456L846,453L840,444L825,441L825,432L831,429L831,420L813,420L810,414L804,414L786,396L789,384L816,384L825,375L825,369L819,366L819,354L804,339L792,339L777,324L744,327L744,324L720,318L711,306Z"/>
+<path class="realm" data-k="moyin-w" d="M912,303L909,306L876,306L873,312L861,315L849,327L849,339L858,342L858,345L870,342L876,348L876,354L852,372L852,390L834,396L834,402L831,402L831,429L825,432L825,441L840,444L846,453L855,456L855,471L864,474L873,483L870,498L879,507L900,510L903,519L909,522L909,528L921,528L927,522L930,501L936,495L936,486L933,486L930,474L924,471L924,462L930,459L930,450L933,450L933,417L948,414L954,408L951,390L960,378L957,360L963,354L957,348L951,348L933,330L933,324L921,315L921,309Z"/>
+<path class="realm" data-k="moyin-e" d="M1032,336L1029,339L1014,339L1011,345L996,342L987,351L975,348L975,345L966,345L963,354L981,354L981,357L993,357L999,351L1005,354L1005,360L993,369L993,399L1005,402L1023,420L1023,426L1032,435L1032,450L1026,456L1029,474L1041,486L1053,489L1059,498L1068,498L1074,489L1080,489L1086,480L1092,480L1098,474L1098,444L1092,438L1086,408L1074,399L1074,357L1071,357L1071,351L1059,342L1047,342L1047,339Z"/>
+<path class="realm" data-k="talz" d="M660,396L648,399L648,402L636,402L636,405L621,405L618,414L612,417L612,423L618,429L618,438L627,444L627,450L621,456L621,471L630,477L636,492L651,504L648,516L633,516L630,510L624,510L618,516L609,516L606,528L600,528L594,543L591,543L591,549L600,558L597,570L570,570L561,588L540,591L540,594L525,594L522,618L525,618L525,627L531,633L531,648L537,654L543,654L552,642L564,642L567,648L579,648L591,660L588,672L573,672L570,666L558,666L546,678L555,678L561,684L579,684L594,699L594,705L600,705L600,708L672,705L672,702L678,702L684,684L690,684L690,663L705,651L702,639L714,636L720,630L720,618L732,609L732,597L741,588L741,579L735,573L729,573L729,558L732,555L723,555L714,540L702,540L696,534L702,504L678,480L678,471L675,471L678,444L675,444L672,429L669,429L669,420L672,420L669,399Z"/>
+<path class="realm" data-k="rahel" d="M909,528L906,531L861,534L852,549L822,552L813,540L780,543L777,537L771,537L747,561L732,555L729,558L729,573L735,573L741,579L741,588L732,597L732,609L720,618L720,630L714,636L702,639L705,651L690,663L690,684L705,687L723,705L771,711L774,720L777,720L777,729L771,732L774,744L783,744L786,729L792,723L798,723L804,717L822,717L837,696L855,696L861,690L861,675L864,675L861,666L873,663L876,654L882,651L882,642L870,627L873,606L882,597L891,597L900,588L900,570L903,570L906,558L915,552L918,528Z"/>
+<path class="realm" data-k="jasmyn" d="M549,678L546,678L549,744L546,744L546,762L543,762L543,780L549,783L549,789L540,789L540,792L531,792L531,795L534,795L534,801L537,798L546,801L546,792L555,795L558,807L564,813L558,837L567,840L576,852L582,852L588,843L600,843L606,849L609,870L612,870L615,882L621,882L621,885L633,885L636,879L645,879L645,873L654,870L657,855L660,855L657,852L657,828L660,825L693,822L699,816L702,795L693,786L687,786L684,777L681,777L681,771L687,768L690,753L711,750L711,753L723,756L729,765L756,765L765,753L780,747L780,744L771,741L771,732L777,729L777,720L774,720L771,711L723,705L714,693L708,693L699,684L684,684L678,702L672,702L672,705L600,708L600,705L594,705L594,699L579,684L561,684L561,681ZM423,711L414,717L414,723L408,729L402,729L405,732L402,747L411,753L411,762L414,762L417,774L426,783L441,786L453,771L462,771L468,765L471,744L456,741L450,735L450,720L456,717L453,711L444,711L444,714Z"/>
+<path class="realm" data-k="pam" d="M1146,588L1140,594L1122,600L1110,612L1077,615L1071,606L1062,606L1056,612L1038,615L1032,621L1032,633L1029,633L1032,693L1044,702L1050,717L1065,729L1074,729L1080,735L1104,732L1107,738L1119,738L1119,741L1134,744L1140,750L1158,753L1164,759L1173,759L1176,765L1191,765L1194,771L1200,771L1206,777L1209,774L1206,750L1197,747L1194,738L1203,729L1218,729L1221,723L1236,720L1248,708L1248,696L1245,696L1248,669L1242,663L1245,639L1239,636L1236,624L1227,615L1206,612L1200,603L1194,603L1188,597L1176,597L1164,588Z"/>
+<path class="realm" data-k="bina" d="M1029,645L1008,657L1005,681L999,687L993,687L990,696L981,705L963,705L954,714L951,738L945,741L945,753L954,765L954,780L951,783L945,783L942,789L933,789L930,795L915,795L915,798L897,804L894,807L894,813L897,813L894,822L870,822L870,825L855,825L855,828L840,831L834,822L813,819L798,837L777,843L774,855L780,861L780,876L789,885L810,882L816,876L831,879L834,885L867,885L867,882L879,882L879,879L903,879L903,882L927,885L933,870L960,861L978,843L984,843L996,861L1005,861L1014,852L1071,849L1071,846L1083,843L1095,828L1107,825L1113,798L1128,786L1137,786L1137,783L1164,786L1170,780L1200,783L1203,774L1194,771L1191,765L1176,765L1173,759L1140,750L1140,747L1125,744L1119,738L1107,738L1104,732L1080,735L1074,729L1059,726L1050,717L1050,711L1044,708L1044,702L1032,693L1032,648Z"/>
+<path class="realm" data-k="shareen" d="M1263,258L1251,261L1251,264L1239,264L1239,267L1224,267L1218,297L1215,300L1191,297L1182,309L1182,324L1185,324L1182,348L1188,351L1188,369L1191,369L1191,378L1185,384L1188,396L1182,399L1182,420L1188,423L1194,438L1206,450L1221,450L1233,435L1242,435L1242,432L1248,432L1248,435L1251,432L1266,432L1269,426L1287,426L1287,432L1305,432L1308,426L1323,429L1329,420L1341,423L1341,429L1347,429L1347,435L1356,435L1359,429L1371,426L1374,432L1383,432L1383,435L1392,438L1398,432L1398,423L1407,423L1419,411L1419,399L1413,396L1413,387L1404,384L1416,372L1416,357L1410,357L1404,351L1404,345L1395,336L1386,333L1386,327L1395,324L1398,318L1431,318L1440,327L1446,327L1452,333L1461,333L1464,318L1446,303L1446,297L1437,291L1434,282L1425,282L1425,279L1416,279L1416,276L1377,279L1377,276L1362,273L1350,258L1302,261L1299,270L1287,276L1275,258Z"/>
+<path class="realm" data-k="sharleen" d="M1590,279L1587,282L1569,282L1569,285L1563,285L1551,294L1542,294L1536,303L1527,300L1524,294L1518,294L1515,288L1488,288L1488,291L1482,291L1476,297L1479,342L1464,342L1455,357L1443,357L1443,360L1416,357L1416,372L1404,384L1413,387L1413,396L1419,399L1419,411L1407,423L1398,423L1398,432L1416,432L1416,435L1428,438L1428,444L1440,441L1443,450L1455,450L1458,459L1473,471L1485,468L1491,459L1503,459L1503,462L1512,465L1515,477L1530,477L1533,474L1548,492L1560,480L1572,480L1578,474L1578,453L1572,450L1569,441L1560,441L1554,447L1551,435L1557,435L1560,426L1569,423L1569,420L1596,420L1614,402L1617,387L1623,381L1629,381L1632,375L1638,375L1638,372L1644,372L1644,369L1650,369L1650,366L1656,366L1668,357L1671,339L1674,339L1674,330L1677,330L1677,315L1668,312L1662,303L1638,300L1638,294L1626,285L1602,285L1602,282Z"/>
+<path class="realm" data-k="beryl" d="M1332,420L1323,429L1308,426L1305,432L1287,432L1287,426L1269,426L1266,432L1251,432L1251,435L1242,432L1242,435L1233,435L1221,450L1212,450L1221,459L1233,462L1230,486L1236,492L1257,495L1260,489L1266,489L1275,480L1299,483L1302,486L1299,504L1311,513L1311,519L1323,531L1323,537L1329,543L1329,564L1350,561L1350,552L1356,546L1362,546L1365,540L1371,540L1371,537L1386,537L1386,534L1398,534L1398,531L1419,531L1419,528L1434,531L1440,537L1440,549L1446,555L1461,555L1464,540L1470,540L1470,537L1500,540L1518,522L1524,507L1539,504L1551,495L1533,474L1530,477L1515,477L1512,465L1503,462L1503,459L1491,459L1485,468L1473,471L1458,459L1455,450L1443,450L1440,441L1428,444L1428,438L1422,438L1416,432L1395,432L1389,438L1389,435L1374,432L1371,426L1365,426L1356,435L1347,435L1347,429L1341,429L1341,423L1332,423Z"/>
+<path class="realm" data-k="laura" d="M1692,342L1686,345L1683,366L1668,381L1647,387L1644,399L1653,402L1656,411L1668,423L1668,441L1671,441L1671,456L1674,456L1671,471L1674,471L1674,486L1677,486L1668,510L1674,516L1710,522L1716,537L1707,540L1707,537L1695,537L1695,534L1662,531L1659,543L1656,543L1656,561L1650,567L1650,576L1653,576L1653,585L1656,585L1659,594L1692,594L1692,591L1713,588L1716,579L1725,579L1731,573L1734,549L1737,549L1740,540L1764,537L1764,534L1770,534L1782,525L1791,525L1797,519L1794,504L1776,501L1770,495L1770,489L1776,486L1776,471L1779,468L1797,474L1806,483L1806,489L1815,495L1815,513L1824,522L1839,522L1842,513L1854,501L1854,486L1845,477L1839,477L1836,468L1833,468L1833,441L1824,438L1809,423L1809,414L1800,402L1770,402L1770,405L1758,405L1752,399L1719,402L1716,399L1716,366L1710,360L1710,351L1707,351L1704,342ZM1776,558L1767,564L1767,570L1755,582L1758,606L1770,618L1791,618L1791,615L1809,612L1812,597L1815,597L1812,567L1800,558L1791,558L1791,561Z"/>
+<path class="realm" data-k="cinta" d="M1329,675L1320,681L1320,699L1314,699L1308,708L1302,708L1293,717L1293,726L1287,729L1287,735L1263,756L1263,789L1266,789L1269,801L1284,816L1290,816L1308,834L1308,840L1320,849L1332,849L1341,840L1344,807L1347,804L1380,810L1380,807L1392,807L1392,804L1407,801L1407,798L1419,798L1425,789L1434,786L1434,780L1428,774L1428,765L1419,756L1392,747L1374,729L1368,714L1341,687L1341,684L1347,684L1347,678Z"/>
+<path class="realm" data-k="jecroft" d="M1422,528L1419,531L1398,531L1398,534L1386,534L1386,537L1371,537L1371,540L1365,540L1362,546L1356,546L1350,552L1350,561L1329,564L1326,567L1329,591L1335,597L1362,600L1374,612L1404,615L1416,594L1437,591L1440,582L1461,564L1461,555L1446,555L1440,549L1440,537L1434,531ZM1470,606L1458,609L1452,618L1449,615L1434,618L1437,624L1443,624L1443,630L1449,630L1446,639L1440,639L1440,645L1416,642L1416,648L1425,657L1425,669L1419,675L1398,672L1392,666L1371,666L1362,675L1362,681L1341,684L1353,696L1353,702L1368,714L1374,729L1392,747L1419,756L1428,765L1431,777L1437,774L1437,768L1452,753L1470,747L1485,732L1497,732L1500,744L1509,753L1521,753L1533,741L1551,735L1554,732L1554,714L1560,711L1560,705L1566,699L1569,675L1578,669L1578,663L1584,663L1587,657L1593,657L1596,651L1605,648L1581,630L1542,639L1536,648L1530,648L1518,633L1518,624L1521,624L1524,612L1506,609L1503,615L1479,615Z"/>
+<path class="realm" data-k="yopis" d="M1620,642L1605,645L1602,651L1596,651L1593,657L1578,663L1578,669L1569,675L1566,699L1563,699L1560,711L1554,714L1554,732L1551,735L1590,738L1590,741L1599,741L1602,735L1644,735L1644,738L1665,741L1674,732L1683,732L1689,726L1698,726L1698,723L1707,726L1710,717L1719,714L1728,705L1722,690L1707,678L1698,678L1689,690L1662,693L1656,687L1656,669L1641,669L1635,663L1632,651Z"/>
+<path class="realm" data-k="sam" d="M1701,723L1689,726L1683,732L1674,732L1665,741L1644,738L1644,735L1602,735L1599,741L1545,735L1521,753L1509,753L1500,744L1497,732L1485,732L1470,747L1452,753L1437,768L1437,774L1431,780L1434,783L1443,780L1452,765L1458,765L1464,774L1479,771L1482,783L1494,786L1497,795L1503,795L1509,804L1515,804L1524,813L1530,828L1536,828L1542,822L1545,825L1575,822L1578,828L1584,828L1590,834L1596,834L1602,825L1653,828L1656,819L1662,816L1662,810L1671,804L1674,792L1683,792L1683,789L1695,792L1698,789L1698,783L1695,783L1695,774L1698,774L1695,735L1704,729L1704,723Z"/>
+</g>
+<g class="lm" data-k="opita"><circle cx="471" cy="94" r="7"/><text x="484" y="99" text-anchor="start">Candy Castle</text></g>
+<g class="lm" data-k="ayaluna"><circle cx="714" cy="122" r="7"/><text x="714" y="145" text-anchor="middle">The Elephant City</text></g>
+<g class="lm" data-k="kz"><circle cx="1031" cy="76" r="7"/><text x="1044" y="81" text-anchor="start">Rose Castle</text></g>
+<g class="lm" data-k="zav"><circle cx="1363" cy="106" r="7"/><text x="1376" y="111" text-anchor="start">The Holy Broccoli</text></g>
+<g class="lm" data-k="hangkas"><circle cx="487" cy="339" r="7"/><text x="487" y="362" text-anchor="middle">Serpent Palace</text></g>
+<g class="lm" data-k="hangkas"><circle cx="456" cy="466" r="7"/><text x="469" y="471" text-anchor="start">The Arena</text></g>
+<g class="lm" data-k="naya"><circle cx="261" cy="554" r="7"/><text x="261" y="541" text-anchor="middle">Storm Fortress</text></g>
+<g class="lm" data-k="naya"><circle cx="100" cy="589" r="7"/><text x="113" y="594" text-anchor="start">Sky Harbour</text></g>
+<g class="lm" data-k="kaylee"><circle cx="734" cy="382" r="7"/><text x="721" y="387" text-anchor="end">Forest Hall</text></g>
+<g class="lm" data-k="moyin-w"><circle cx="889" cy="321" r="7"/><text x="889" y="308" text-anchor="middle">Flower Palace</text></g>
+<g class="lm" data-k="moyin-e"><circle cx="1067" cy="436" r="7"/><text x="1080" y="441" text-anchor="start">The Great Windmill</text></g>
+<g class="lm" data-k="talz"><circle cx="652" cy="512" r="7"/><text x="639" y="517" text-anchor="end">Blue Garden Castle</text></g>
+<g class="lm" data-k="rahel"><circle cx="796" cy="581" r="7"/><text x="796" y="604" text-anchor="middle">The Grand Library</text></g>
+<g class="lm" data-k="jasmyn"><circle cx="436" cy="745" r="7"/><text x="436" y="768" text-anchor="middle">Mermaid Lagoon</text></g>
+<g class="lm" data-k="jasmyn"><circle cx="601" cy="731" r="7"/><text x="614" y="736" text-anchor="start">Dragonstone</text></g>
+<g class="lm" data-k="pam"><circle cx="1116" cy="612" r="7"/><text x="1116" y="599" text-anchor="middle">Swan Palace</text></g>
+<g class="lm" data-k="bina"><circle cx="1003" cy="754" r="7"/><text x="990" y="759" text-anchor="end">Sun Palace</text></g>
+<g class="lm" data-k="shareen"><circle cx="1322" cy="264" r="7"/><text x="1322" y="251" text-anchor="middle">Toy Palace</text></g>
+<g class="lm" data-k="sharleen"><circle cx="1560" cy="313" r="7"/><text x="1573" y="318" text-anchor="start">Bridgerton Manor</text></g>
+<g class="lm" data-k="beryl"><circle cx="1405" cy="420" r="7"/><text x="1405" y="443" text-anchor="middle">Beryl Citadel</text></g>
+<g class="lm" data-k="laura"><circle cx="1693" cy="374" r="7"/><text x="1693" y="361" text-anchor="middle">Lantern Pagoda</text></g>
+<g class="lm" data-k="laura"><circle cx="1714" cy="554" r="7"/><text x="1714" y="577" text-anchor="middle">Floating Lanterns</text></g>
+<g class="lm" data-k="jecroft"><circle cx="1487" cy="696" r="7"/><text x="1487" y="683" text-anchor="middle">Jungle Temple</text></g>
+<g class="lm" data-k="yopis"><circle cx="1600" cy="650" r="7"/><text x="1613" y="655" text-anchor="start">Yopis Fortress</text></g>
+<g class="lm" data-k="sam"><circle cx="1611" cy="757" r="7"/><text x="1611" y="780" text-anchor="middle">Sam's Castle</text></g>
+<g class="lm" data-k="cinta"><circle cx="1351" cy="716" r="7"/><text x="1338" y="721" text-anchor="end">Heart Village</text></g>
+<g class="tokens"></g>
+</svg>
+</div>
+<!-- MAP END -->
+    <figcaption class="map-hint">Swipe to explore the realm →</figcaption>
+    <p class="map-tip">Tap a kingdom to meet its ruler.</p>
+  </figure>
+
+  <div class="sheet lore">
+    <h2>The Kingdoms of the Realm</h2>
+
+    <h3 id="lore-hangkas">The Hangkas — Empress Neya</h3>
+    <p>A snake-moon kingdom where giant serpents guard the coasts and the people play a fierce game of quidditch for fun. Neya rules with calm and fire in equal measure. Her flagship, the <em>Serpent Moon</em>, was carved by Pirate King Naya himself. Colours: green and butter.</p>
+
+    <h3 id="lore-naya">The Sea Tyrants of Naya — Pirate King Naya</h3>
+    <p>Once a band of pirates, now a kingdom: harbours hidden in cloud, a living sky-island, and a fleet of tough, loyal sailors. Naya reads storms the way other people read books. His people sail where no one else can. Colour: blue.</p>
+
+    <h3 id="lore-opita">Opita Island — Queen Opi</h3>
+    <p>A kingdom of candy and cake where almost everything is edible. Opi's sweets are magically nourishing and somehow sugar-free, which makes the island the realm's pantry in hard times. Colour: pink.</p>
+
+    <h3 id="lore-ayaluna">Ayaluna — Queen Aya</h3>
+    <p>A northern kingdom built on the back of a colossal, wandering elephant. Home to giant elephants (and one small flying one) and a proud, disciplined army. Colour: purple.</p>
+
+    <h3 id="lore-kz">KZ Roselynd Castle — Queen KZ</h3>
+    <p>A kingdom made almost entirely of roses: roses you can eat, rosewood as strong as iron, castles grown from rose vines. KZ's rose enchantments are the finest in the realm. Colours: Dutch red and rose pink.</p>
+
+    <h3 id="lore-zav">Zav's Broccolingdom — King Zav</h3>
+    <p>Everything here is broccoli: the crops, the houses, even the soldiers. Their broccoli can taste like any dish you can imagine, which makes the kingdom a granary for the whole realm. King Zav is the fastest broccoliman who ever lived. Colour: green.</p>
+
+    <h3 id="lore-kaylee">Kayleeville — Queen Kaylee</h3>
+    <p>A kingdom of bear-folk who carry the strength of ancient giants. Tough, loyal and blunt. Kaylee rides into battle on an armoured bear, and her army is the realm's hard fist. Colour: green.</p>
+
+    <h3 id="lore-moyin">The Moyin Islands — Queen Maureen</h3>
+    <p>A rich tulip kingdom of two islands, west and east. Its tulip fields make the realm's finest cloth and dyes, and its enchanters can turn petals into armour. Colour: pink.</p>
+
+    <h3 id="lore-talz">Talz Dominion — Queen Talitha</h3>
+    <p>A blue garden kingdom where everything grows faster under Talitha's touch: crops, timber, even animals. Its castles are alive and grow their own walls. Colour: blue.</p>
+
+    <h3 id="lore-rahel">Rahel's Empire — Queen Rahel</h3>
+    <p>The medical heart of the realm. Master physicians, living hospitals, a grand library, and the famous healing salve that can mend almost anything if you use it right. Colour: purple.</p>
+
+    <h3 id="lore-jasmyn">Jasmyn's Dragonstone — Queen Jasmyn</h3>
+    <p>A kingdom of dragons and mermaids. Jasmyn's voice commands both sea and sky, and her riders are the realm's fastest help in a crisis. Colour: green.</p>
+
+    <h3 id="lore-pam">Pam's Wonderland — Queen Pam</h3>
+    <p>A holiday kingdom of ducks, from little duck footsoldiers to giant duck steeds, famous for its duck dishes and secret chilli sauce. Pam's messenger ducks fly to every kingdom and carry all the realm's news. Colour: pink.</p>
+
+    <h3 id="lore-bina">Bina's Sunny Island — Queen Bina</h3>
+    <p>A holiday island where the sunlight, the music and even the air make people forget their worries. Everyone's favourite place to rest. Colour: pink.</p>
+
+    <h3 id="lore-shareen">Shareen's Mart — Queen Shareen</h3>
+    <p>A pop-mart kingdom of rare toys and rare minerals. Its markets set the trends for the whole realm. Colour: pink.</p>
+
+    <h3 id="lore-sharleen">Sharleen Bridgerton — Queen Sharleen</h3>
+    <p>The great power of the east, known for love and war in equal measure. Its army is the strongest in the east, and its court is half ballroom, half war room. Colour: pink.</p>
+
+    <h3 id="lore-beryl">Beryl Kingdom — Queen Mayzha and Beryl the cat</h3>
+    <p>A kingdom run, more or less, by cats: cat soldiers, cat merchants, and a relaxed charm that visitors love. Beryl the cat is both its symbol and its commander. Colour: pink.</p>
+
+    <h3 id="lore-laura">Laura Island — Queen Laura</h3>
+    <p>A kingdom of floating lanterns, built up in the clouds. Whole districts drift on lantern craft, and only friends who know the routes can find it. Colour: pink.</p>
+
+    <h3 id="lore-cinta">Cinta Island — Queen Cinta</h3>
+    <p>A romantic island where love is in the wind. Cinta's magic can kindle powerful bonds, and people say there's real military strength behind the soft exterior. Colour: pink.</p>
+
+    <h3 id="lore-jecroft">Jecroft Islands — Queen Jeje</h3>
+    <p>A treasure kingdom of hidden vaults and trap-filled ruins. Jeje's people love cunning and secrets, and nobody knows how deep their tunnels really go. Colour: gold.</p>
+
+    <h3 id="lore-yopis">Yopisheim — Queen Yopis</h3>
+    <p>A hard, icy kingdom whose people are tough as their winters. Their ice magic and disciplined fleet once kept the pirates away. Colour: blue.</p>
+
+    <h3 id="lore-sam">Sam's Kingdom — Queen Samantha</h3>
+    <p>The forge of the east. Sam's armouries make the weapons and armour that keep her allies standing. Colour: purple.</p>
+  </div>
+</section>
+
+<h1 class="act-title" id="act1">Act 1</h1>
+
+<article class="chapter sheet" id="ch1" data-act="1">
+  <figure>
+    <img src="images/ch1-naya-storm.jpg" alt="Naya on his ship, lightning in hand, as the red fleet burns">
+  </figure>
+  <h2>Chapter 1 — Discovery</h2>
+  <p>The sky cracked open with lightning.</p>
+  <p>Naya stood at the prow of his ship, his cloak snapping in the wind like a blue flag. Below him the sea heaved, and every flash turned the waves silver.</p>
+  <p>He hadn't planned on a fight tonight. He'd only meant to sail once around the island and make sure the trade routes were clear. Then he saw them: red sails on the horizon. Dozens of them, under no banner he knew.</p>
+  <p>That wasn't the strangest part. A week ago the Grand Map had vanished, and since then the currents had gone wild. Ships all over the realm were stuck in their harbours. But these red ships sailed straight and steady, as if the sea were moving aside to let them through.</p>
+  <p>"Battle stations!" he shouted. His crew were moving before the thunder answered.</p>
+  <p>Cannons boomed. Fire jumped from ship to ship, and the air filled with smoke and salt. Naya raised his sword, and lightning ran down the blade. The storm listened to him. It always had.</p>
+  <p>He drove straight into the middle of the red fleet. The first ship split apart under his strike. The next one caught fire before it could turn its guns. He was outnumbered ten to one, but numbers don't count for much against a storm.</p>
+  <p>Minutes later, the sea was full of burning wrecks.</p>
+  <p>The red ships went down without a cry. No survivors. No flags. Nothing to say who they were. Only silence and drifting ash.</p>
+  <p>Naya stood at the bow again, watching the empty horizon.</p>
+  <p>"Who are you?" he said quietly to the waves.</p>
+  <p>Lightning flickered in his hand once more, smaller now.</p>
+  <p>The Grand Map gone without a trace. And now a fleet that didn't need it.</p>
+  <p>Maybe, he thought, the map hadn't vanished by accident at all.</p>
+  <p>The wind gave no answer. Only thunder, rolling somewhere far away.</p>
+</article>
+
+<article class="chapter sheet" id="ch2" data-act="1">
+  <figure>
+    <img src="images/ch2-serpent-and-pirate.jpg" alt="Neya on the balcony of her sea palace with her serpents, Naya's boat below, Opita burning on the horizon">
+  </figure>
+  <h2>Chapter 2 — The Serpent and the Pirate</h2>
+  <p>The lightning faded, but the uneasy feeling didn't.</p>
+  <p>Naya could feel it in the air, a hollow pull, like the quiet before a second storm. That hadn't been a random raid. The red fleet had been going somewhere, and it hadn't been looking for him.</p>
+  <p>It had been sailing toward Talz Dominion.</p>
+  <p>His jaw tightened. Queen Talitha was nobody's fool, but her navy wasn't built for a sudden war. He turned to his helmsman.</p>
+  <p>"Bring her around," he said. "We go via the Hangkas."</p>
+  <p>The sea did as he asked. Wind snapped into the sails, and the thunder rumbled behind them as if it were pushing them along.</p>
+  <p>They sailed through the night in flashes of lightning and spray. When dawn came, Naya saw something that chilled him more than any storm had: the sky over the Hangkas.</p>
+  <p>Smoke. Storm clouds. War banners going up.</p>
+  <p>Neya's fleet was gathering in the harbour, black ships lined up against the morning light. And there she was, on the balcony of her sea palace, her cloak whipping in the wind, her eyes on the horizon.</p>
+  <p>She had seen the same thing he had. Maybe more.</p>
+  <p>As his ship came closer she turned, and their eyes met across the water. She didn't need to say anything. She had felt it too. Something was very wrong.</p>
+  <p>A clap of thunder rolled in from the north.</p>
+  <p>Then they saw it: a burst of orange fire splitting the horizon.</p>
+  <p>Opita Island. The explosion lit up the sea like sunrise.</p>
+  <p>Neya's face went hard. "They've hit Opi," she called down, her voice steady. "I'll go."</p>
+  <p>Naya nodded. "Then I'll check on Talitha."</p>
+  <p>"Be careful, pirate."</p>
+  <p>"You too, Empress."</p>
+  <p>Neither of them waited. There wasn't time.</p>
+  <p>The storm split between them, half of it rolling north with Neya's fleet, the other half curling east with Naya's ship. And as they disappeared into the mist, the thunder carried one warning through the clouds:</p>
+  <p>The Realm of Neya was at war.</p>
+</article>
+
+<article class="chapter sheet" id="ch3" data-act="1">
+  <figure>
+    <img src="images/ch3-talz-garden.jpg" alt="Naya arriving in the glowing blue gardens of Talz, where Talitha and Jasmyn's dragon wait">
+  </figure>
+  <h2>Chapter 3 — Dragons and Mermaids in the Garden</h2>
+  <p>By the time Naya reached Talz Dominion, the horizon was glowing blue.</p>
+  <p>Petals floated on the water. The trees, tall giants with sapphire leaves, swayed in a rhythm that had nothing to do with the wind, and their roots pulled at the soil as if they were alive. The air smelled of rain and sap.</p>
+  <p>The Dominion was beautiful. It was also getting ready for war.</p>
+  <p>Naya jumped from his ship onto the slippery dock, splashing through seawater and petals. Lightning lit up the huge garden towers that reached into the clouds.</p>
+  <p>"Over here!" called a familiar voice.</p>
+  <p>Queen Talitha stood under an arch of blue vines, her gown soaked, her hands glowing as she shaped the plants into living barricades. Beside her, Queen Jasmyn sat on her dragon, its wings spread wide, its scales catching the lightning like rippling silver.</p>
+  <p>"Naya," Jasmyn said. "It's spreading. They've attacked the Moyin Islands and taken Maureen's eastern island. Kaylee's army is trying to push through from the west."</p>
+  <p>Naya frowned. "That's northeast of here. They're moving inland."</p>
+  <p>"And we can't reach them by ship," Talitha said. "Not without the Grand Map. The currents are wild, the winds turn around without warning. Nobody can sail anywhere."</p>
+  <p>Naya glanced at the horizon. "Then the seas are useless for most of us." He looked at Jasmyn. "But not for you."</p>
+  <p>Her dragon gave a low growl, as if it understood.</p>
+  <p>"My dragons can still fly through the storms," Jasmyn said, "and my mermaids can swim underneath them. I can reach Moyin. But I'll need supplies. A lot of them."</p>
+  <p>Talitha turned, and the vines moved at her word. They lifted crates from the docks, full of glowing blue fruit, roots and crystals of living water.</p>
+  <p>"Take these," she said. "Growth catalysts. They'll feed your dragons and help your wounded heal. Tell Kaylee that Talz stands with her. Tell Maureen she isn't alone."</p>
+  <p>"Good," Naya said. "While you head northeast, I'll go east to Rahel's Empire. She needs to start making her healing salves before this gets any worse."</p>
+  <p>Jasmyn's dragon beat its wings, and the gust scattered blue petals across the water. "Once Moyin is safe, I'll fly to Rahel," she said. "My dragons and mermaids can carry her salves across the realm."</p>
+  <p>Naya looked at the two queens. "This storm's only beginning," he said. "But as long as we're still standing, Neya's realm won't fall."</p>
+  <p>Lightning flashed, and for a moment the three of them seemed to glow together: blue vines, silver scales and white lightning.</p>
+  <p>Then the storm roared again, and the war began to move.</p>
+</article>
+
+<article class="chapter sheet" id="ch4" data-act="1">
+  <figure>
+    <img src="images/ch4-great-doctor.jpg" alt="Naya meeting Queen Rahel in her grand library">
+  </figure>
+  <h2>Chapter 4 — The Great Doctor</h2>
+  <p>Rahel's Empire rose from the plains like a violet city: purple domes and spires, banners stitched with a healing hand. Guards in lavender armour watched the roads. Naya's boots rang on the cobbles as he walked into the palace grounds.</p>
+  <p>The grand library stood at the heart of the city, a domed hall of books with medicine charts painted into its windows. Inside, it smelled of dust and herbs, and it was quiet in the busy way of a place that keeps the world from falling apart.</p>
+  <p>Rahel waited among her books, surrounded by guards. She stood when he came in and kept a careful distance. Polite, but wary. Naya noticed, and didn't blame her. She was Neya's friend, not his.</p>
+  <p>"Pirate," she said simply, one hand resting on her short staff. "What do you want?"</p>
+  <p>Naya told her quickly, because time was all they had. The red fleet. The fires. The missing Grand Map. Jasmyn flying for Moyin, Kaylee's bears holding what ground they could, Talitha sending supplies.</p>
+  <p>"And I need your healing salves," he said. "This war is going to spread. Your salves can save whole armies. Jasmyn will carry them by dragon and by sea. But you have to make enough for the whole realm, not just your own towns."</p>
+  <p>Rahel's eyes narrowed a little as she listened. Around them, the librarians had stopped writing. Then she let out a long breath that smelled faintly of lavender.</p>
+  <p>"Are you asking as a messenger or as a commander?" she said. "If the realm really is burning, I'll organise the healers. But I won't waste my empire's medicine on fools."</p>
+  <p>Naya met her eyes. "Both. Tell Neya I'm still loyal to our alliance. Tell your healers this is a war. Get your people ready for supply runs." He paused. "And guard the library."</p>
+  <p>He let that hang. The library was more than books. It was Rahel's arsenal.</p>
+  <p>Something in her face changed, from suspicion to something closer to resolve. "Very well." She waved over a scribe. "Send word to every apothecary. Double the salves. Make two copies of every recipe. If the Grand Map is gone, there'll be no easy way to move supplies, so we need backups for everything."</p>
+  <p>Naya turned to leave.</p>
+  <p>"One more thing," Rahel said. Her guards stiffened.</p>
+  <p>He stopped.</p>
+  <p>"Is it true," she asked quietly, "that pirates made the Grand Map? That your crew once 'conquered wind and sea' to make travel safe? Can it be made again?"</p>
+  <p>It didn't sound like an accusation. It sounded like a scholar who had spent years staring at old charts and wondering.</p>
+  <p>Naya thought of the old nights with his crew: ink on their fingers, compasses everywhere, all of them laughing at the sea as if it were a puzzle. Not everyone from those nights was still with him. He didn't need to make a speech about it.</p>
+  <p>He just nodded.</p>
+  <p>Rahel studied his face, then gave a small smile. "Then you know what you have to do." Her voice was softer now. "But you'll be doing it while the realm burns. Don't pretend it'll be easy."</p>
+  <p>"I know," Naya said. "I'll do it anyway."</p>
+  <p>Rahel gave a short nod, and the library came alive behind him: scribes shouting, pens scratching, apprentices running, healers lining up bottles.</p>
+  <p>Outside, thunder rolled. Naya walked back to the docks with his cloak snapping in the wind. He would chart the realm again, he decided, even if he had to carve the lines into the sea with lightning.</p>
+  <p>And with that, he set course for Pam's Wonderland, the next piece of the Grand Map he would have to win back.</p>
+</article>
+
+<article class="chapter sheet" id="ch5" data-act="1">
+  <figure>
+    <img src="images/ch5-vacation-islands.jpg" alt="A red-armoured figure stands over the wounded in the pink streets of Pam's Wonderland">
+  </figure>
+  <h2>Chapter 5 — The Vacation Islands</h2>
+  <p>The sea spat them out like a secret.</p>
+  <p>Pam's Wonderland rose from the water, soft and silly and pink: pink roofs, lilies on the canals, rows of pink ducks waddling along the promenade and quacking politely while attendants fed them. To the southwest, music drifted over from Bina's Sunny Island, and barbecue smoke floated lazily over the palm trees. For a moment, Naya let himself enjoy it. This was supposed to be the place that forgot about war.</p>
+  <p>Then he saw the faces.</p>
+  <p>The plaza should have been full of laughter. Instead, people walked with their jaws clenched and their eyes down. Parents held their children close. It wasn't fear of him, and it wasn't quite fear of soldiers, either. It was the kind of fear that listens for orders and obeys without thinking.</p>
+  <p>And the ducks. Pam's messenger ducks usually filled the sky over the palace, coming and going with letters from every corner of the realm. Today they were all shut in their pens, silent.</p>
+  <p>Pam met him in the palace garden. For a second she smiled. Then the smile broke.</p>
+  <p>"How did you get here?" she whispered, as if even the question was dangerous. "Without the Grand Map, how…"</p>
+  <p>"I can read the storms," Naya said, keeping his voice calm. "I've sailed without charts my whole life." He looked past her at the crowd. "Pam, are you safe?"</p>
+  <p>Her lip trembled. A tear ran down her cheek. She looked like she wanted to run, or to beg him to leave. Her eyes flicked up to the rooftops and back, very fast. Then she wiped the tear away and only managed a whisper.</p>
+  <p>"We're… not alright."</p>
+  <p>An arrow hissed through the air where his head had been a moment before. Naya ducked so fast his shoulder hit a carved bench, and he felt the arrow brush past his ear.</p>
+  <p>Shadows dropped from the rooftops. Figures in red landed like falling leaves and closed off the square. They moved like knives. Silent. Deadly.</p>
+  <p>"Stay back!" Naya shouted. His crew rushed forward, hands on their swords. But the plaza was full of traps, and every one of them seemed to answer a single command.</p>
+  <p>A woman walked down from the highest balcony. Her armour was dark red, trimmed with silver, and her helmet was tucked under one arm. Naya knew that face. General Nonne. Once she had stood at Empress Neya's right hand. Once she had saluted the Hangkas banner. Naya felt his old respect for her twist into something hot and hard.</p>
+  <p>"Nonne?" he said. The name tasted like ash.</p>
+  <p>She gave a small, sharp laugh. "You remember me. Good. I don't owe you any explanations, Pirate King." She tilted her head, enjoying herself. "You'll be dead soon anyway."</p>
+  <p>Pam made a sound like she wanted to cry out. For a second Naya thought she might move. Then she froze. Tears ran down her face, but she didn't speak and she didn't step forward. Her eyes went to the rooftops again, and this time Naya followed them. The crossbows up there weren't only aimed at him and his crew. They were aimed at the crowd. At her people.</p>
+  <p>Nonne raised a hand. Across the rooftops, hidden blades slid free. Dozens of crossbows swung toward the harbour, the docks, the alleys where Naya's crew stood.</p>
+  <p>"Take the queen," Nonne said. "As for your crew, Pirate King, you can watch them fall." She smiled slowly. "My assassins are already in position. Let's see how fast loyalty burns."</p>
+  <p>Naya felt fire rise in his chest. Around him his crew tensed. The captain of his guard caught his eye and gave a single nod, the kind that means all hands on deck.</p>
+  <p>"Well?" Nonne said. "Choose."</p>
+  <p>The plaza filled with running feet and the soft, terrible click of hidden traps snapping open. Down at the harbour, a cannon boomed.</p>
+  <p>Naya lunged for Pam. Two assassins slid in behind him, and a dagger bit into his shoulder, hot and quick. He tasted salt and lightning, spun, and cut the attacker down.</p>
+  <p>But the plaza was closing around him like a fist. Nonne's soldiers locked their shields together. He saw her raise her hand again, heard the far-off whistle of a crossbow bolt, and behind him one of his best men fell without a sound.</p>
+  <p>For a heartbeat, Naya thought of Neya. Of green banners. Of the serpent ship he had carved with his own hands. He thought of the map, the ink and compasses, and all the work still left to do.</p>
+  <p>Then Nonne's voice cut through the chaos, cold and certain.</p>
+  <p>"Kill them."</p>
+</article>
+
+<article class="chapter sheet" id="ch6" data-act="1">
+  <figure class="portrait">
+    <img src="images/ch6-neya-opita.jpg" alt="Neya walking through the ruins of Opita with a serpent at her side">
+  </figure>
+  <h2>Chapter 6 — The Roasted Marshmallows</h2>
+  <p>The sea between the Hangkas and Opita Island was small, barely a morning's sail. It was already burning.</p>
+  <p>Smoke rolled across the horizon like a dark curtain. The closer they came, the more the air tasted of sugar and ash. Sweetness, spoiled by fire. From the prow of her ship, Empress Neya watched the shoreline flash red and pink.</p>
+  <p>Cannon fire.</p>
+  <p>And candy fire.</p>
+  <p>Her jaw tightened. "They've already taken it."</p>
+  <p>Her flagship, the great <em>Serpent Moon</em>, carved in the shape of a coiled sea snake, cut through the waves. Dozens of smaller ships followed, green and butter banners snapping in the wind, while her serpents swam around them in long, smooth curves. The whole fleet moved like one living creature.</p>
+  <p>Then the first barrage hit.</p>
+  <p>Molten sugar and burning cake smashed into the water. The red army had built cannons out of Opi's own creations and turned the island's sweetness into weapons. A jelly mortar burst near the bow and threw caramel fire into the sky.</p>
+  <p>"Return fire," Neya said quietly.</p>
+  <p>Her order rippled down the line. The serpents rose out of the waves, huge and scaled, and struck the shore. They tore through the enemy cannons like wet paper, and the coastline cracked open under them.</p>
+  <p>In minutes, the coast was hers again.</p>
+  <p>"Land the troops," she said. "Clear the port."</p>
+  <p>They marched through sticky ruins, frosting melting under their boots, smoke rising from broken candy towers. Opita Island, once the sweetest place in the realm, looked like a dream that had been half eaten and left to rot. Hangkas soldiers moved in pairs, cutting down what was left of the red army's front line. Melted sugar glass crunched underfoot.</p>
+  <p>Neya walked behind them, steady. Her serpents slid along beside her, their great heads weaving through the ruins.</p>
+  <p>The further they went, the quieter it got.</p>
+  <p>And then she saw it. The hole.</p>
+  <p>It wasn't just a crater. It was a wound. The whole capital of Opita, Opi's palace, the tall cake castle that used to sparkle like the centrepiece of a festival, was gone. Nothing was left but scorched sugar and blackened icing. The smell of burnt sweetness hung in the air.</p>
+  <p>For the first time in a long time, Neya's calm slipped.</p>
+  <p>"Opi…" she whispered.</p>
+  <p>Her serpent curled protectively around her as she stepped closer. There were pieces of the palace everywhere: frosting walls, candy glass windows, crushed like sugar sculptures.</p>
+  <p>She turned to her captain. "Search the ruins. Find survivors. Anyone."</p>
+  <p>Her soldiers scattered. The serpents hissed low, tasting the ash. Neya looked out at the horizon again.</p>
+  <p>Why Opita?</p>
+  <p>Opi's island was no threat to anyone. It was a food kingdom, gentle and generous. And yet they had come with everything they had.</p>
+  <p>Something glinted, half buried in melted candy glass. She knelt, brushed the sugar away, and found a piece of red armour painted with a strange symbol. One she had never seen before.</p>
+  <p>Her pulse stopped for a beat.</p>
+  <p>She stood up slowly. "Bring me that standard," she said. "I want it confirmed."</p>
+  <p>Lightning flickered behind her. Her serpents hissed. Then, faintly, much too faintly, she heard something under the rubble.</p>
+  <p>A cough.</p>
+  <p>"Opi?" she breathed.</p>
+  <p>And without a second's thought, the Empress of the Hangkas dove into the ruins.</p>
+  <div class="break"></div>
+  <figure>
+    <img src="images/ch6-neya-and-opi.jpg" alt="Neya kneeling beside the wounded Queen Opi in the ruins">
+  </figure>
+  <p>A sweep of her serpent's tail cleared the last of the rubble, and there, half buried under melted frosting and broken sugar glass, lay Queen Opi. Her pastel gown was torn and burnt, and the sweet smell that always followed her was fading into smoke.</p>
+  <p>"Opi!"</p>
+  <p>Neya dropped to her knees and brushed away the sticky shards. Opi's breathing was faint and shallow. Her skin shimmered weakly, like sugar melting in the rain.</p>
+  <p>"Get a medic!" Neya shouted. "Now! Bring the field healers!"</p>
+  <p>Soldiers ran over with supplies, but Neya already knew. This was beyond them. Opi would live, but slowly. Only Rahel's healing salve could bring her back quickly.</p>
+  <p>Then Opi's eyelids flickered.</p>
+  <p>"Empress Neya…" Her voice was fragile, but still soft and warm. "You came."</p>
+  <p>"I'm here," Neya said, kneeling closer. Her voice was steady. Her hands weren't. "Don't talk. You need to rest."</p>
+  <p>Opi tried to smile. "I'm sorry… I couldn't stop them."</p>
+  <p>"You did what you could. You survived. That's enough."</p>
+  <p>But Opi shook her head, and a tear cut a line through the sugar dust on her cheek. "You don't understand. They're not just invaders. They're after the whole realm."</p>
+  <p>Neya's eyes narrowed. "Tell me."</p>
+  <p>Opi coughed. "They came for our food. The red army is going after every kingdom that grows or makes something. They'll take us over, strip us bare, and let the rest of the realm starve without us. They want to drain everyone until only they're left."</p>
+  <p>Neya went very still. "That's… organised."</p>
+  <p>"It's worse," Opi whispered. "It's too perfect. They knew where to strike. They knew how to make the Grand Map disappear, and how to sail without it. They move through the storms like they belong here. No outsider could do that."</p>
+  <p>Neya felt her heart go cold. "Then they're not outsiders."</p>
+  <p>Opi nodded weakly. "Their general… she's waiting for you. In the capital, or what's left of it. She's the one who destroyed it. We fought. That's what caused the explosion."</p>
+  <p>"She's still here?"</p>
+  <p>"Yes. She said she wanted you. She said…" Opi's voice broke into a small cry of pain.</p>
+  <p>Neya rested a hand on her shoulder. "Shh. You've done enough."</p>
+  <p>She stood up slowly. Her cloak was stained with candy dust and blood, and her eyes burned a fierce green. Outside, the storm roared again, as if it were answering her heartbeat.</p>
+  <p>"Guard Queen Opi," she told her soldiers. "Keep her alive. Anyone who touches her answers to me."</p>
+  <p>The soldiers saluted. Her serpents coiled tighter around the ruins, eyes glowing in the stormlight. Neya turned toward the heart of what used to be Opi's candy kingdom, now a ruin of black sugar and flame.</p>
+  <p>Lightning cracked across the sky.</p>
+  <p>"She wants me?" Neya said under her breath. "Then she can have me."</p>
+  <div class="break"></div>
+  <p>The closer she came to the capital, the wilder the ruins got. Red soldiers were picking through the melted towers like scavengers, smashing open sugar vaults and stuffing sweets into battered chests. Every theft felt like a slap.</p>
+  <p>They tried to stop her with volleys of blades and charging lines, but none of them could touch the Empress. Her guards moved as one with the serpents: coils that blocked, heads that struck, fangs that flashed. One brave soldier got his sword caught between two serpent jaws and was flung, dazed and coughing, into a heap of frosting. The Hangkas pushed forward like the tide. Steady. Unstoppable.</p>
+  <p>Then she saw her.</p>
+  <p>In the middle of the ruined plaza stood a woman in red armour so tight it looked like a second skin. Slim, cold, precise. General Kannca. Red serpents rose around her like a living crown. Once, she had been one of Jasmyn's guards. Now she stood with the invaders.</p>
+  <p>"So you've decided to bring even more shame to your name," Neya said flatly.</p>
+  <p>Kannca's lip curled. "What shame? This realm is going to fall. I'll have your kingdom and your serpents." Her red serpents hissed behind her. "You'll kneel."</p>
+  <p>She snapped her arm forward, and her serpents struck like crimson whips. Neya's serpents met them head on, green and butter scales flashing, fangs bared. The plaza became a blur of bodies and scales.</p>
+  <p>For one long, terrible minute, it felt even. Heads crashed together. Venom sprayed like mist. A red serpent lunged for Neya's throat. She twisted away and its fang nicked her cheek. It hurt, but she didn't stop.</p>
+  <p>A green guard grabbed a red serpent's tail and slammed it into the ground. One of Kannca's serpents wrapped around a fallen statue and crushed it into an avalanche of sugar that buried half a squad. Neya and Kannca circled each other like two storms. Every time a green head rose, a red one answered. Every time Neya struck, Kannca blocked.</p>
+  <p>"Just as I thought," Neya said through her teeth, after a clash that sent two red serpents skidding across the plaza. "Your serpents are nothing."</p>
+  <p>Kannca laughed. "You bluff like a child. It's even so far. Stop talking. My serpents will crush yours, and soon I'll be queen of all of them."</p>
+  <p>Neya's eyes flared a bright, fresh green. "Like I said," she answered, low and dangerous, "there's a reason I'm the Queen of Serpents."</p>
+  <figure>
+    <img src="images/ch6-basilisk.jpg" alt="Neya's ancient basilisk rising out of the ruined island">
+  </figure>
+  <p>The ground answered.</p>
+  <p>First a tremor, a small shiver under feet and scales. Then the whole plaza buckled, as if the island had taken a breath. Cracks raced out from under Kannca's boots. Her red serpents reared back as the earth split.</p>
+  <p>Kannca's smile faltered. She looked down. "What—"</p>
+  <p>The ground exploded. Stone and sugar flew into the air, and out of the crack rose something huge and terrible: scales darker than the deepest forest pool, eyes like cut emeralds, a head the size of a carriage. A basilisk, older than any story, uncoiling from deep inside the island itself.</p>
+  <p>It rose at Neya's call. Its mouth opened wide, and then it lunged, fast as lightning, at Kannca.</p>
+  <p>Kannca shouted at her serpents to stop it. They struck and missed. The basilisk was already over her. She reached for her blade, for a trick, for anything.</p>
+  <p>Too late.</p>
+  <p>The basilisk swallowed her whole.</p>
+  <p>All that came back out was a single red gauntlet, which clattered onto the cracked sugar stone.</p>
+  <p>For a breath, the red soldiers just stood there in shock. Then they panicked. Without their general, their lines fell apart. They ran, tripping over melted candy, dropping their loot, racing for boats that wouldn't take them far. Kannca's red serpents went limp and slithered away like frightened grass snakes.</p>
+  <p>Neya stood over the trembling crater, her serpents coiled around her, breathing steam into the cold air. She didn't feel triumphant. Only clear.</p>
+  <p>"Do you still doubt it?" she asked the silent ruins.</p>
+  <p>Around her, her serpents roared, and the last of the red soldiers fled into the smoke, leaving Opita to its survivors and the first small steps toward getting better.</p>
+  <p>The fight had looked even. It never had been. It had been a lesson, and Neya had made sure nobody would forget it.</p>
+</article>
+
+<!-- ACT 1 END -->
+
+<figure class="cover" id="act2-cover">
+  <img src="images/act2-cover.jpg" alt="The Realm of Neya, Act II: Neya and Naya on the shore">
+</figure>
+
+<h1 class="act-title" id="act2">Act 2</h1>
+
+<article class="chapter sheet" id="ch7" data-act="2">
+  <h2>Chapter 7 — Sugar and Ash</h2>
+  <p>The storm over Opita Island finally broke on the third morning.</p>
+  <p>The candy towers were half melted. Some had cracked down the middle, and some were simply gone. But the people of Opita were already rebuilding. Sugar hammers rang across the harbour, and caramel cranes swung chocolate beams into place. The whole island smelled of frosting and smoke.</p>
+  <p>Neya watched from a balcony above the port. Her serpents lay coiled in the shallows below, keeping an eye on the workers. Now and then a child waved at one, and the serpent blinked back, very slowly.</p>
+  <p>Her captains came up to report. The last red ships were burning in the bay. Kannca's army was gone.</p>
+  <p>"Good," Neya said. "Then let's not waste the morning."</p>
+  <p>She found Opi in the infirmary, propped up under a blanket of spun sugar lace. She still looked tired, but some colour had come back to her cheeks.</p>
+  <figure>
+    <img src="images/ch07-sugar-and-ash-B.jpg" alt="Neya at Opi's bedside in the sugar-lace infirmary while Opita is rebuilt">
+  </figure>
+  <p>"You're leaving," Opi said.</p>
+  <p>"I haven't said anything yet."</p>
+  <p>"You don't have to. You've got your going-away face on."</p>
+  <p>Neya sat on the edge of the bed. The floor was sticky under her boots. Half sugar, half ash.</p>
+  <p>"Your people know what they're doing," she said. "They don't need me standing on a balcony looking serious."</p>
+  <p>Opi laughed, then winced. "You do look very serious."</p>
+  <p>"I'm worried," Neya admitted. "We haven't heard from anyone in days. Not a letter. Not even one of Pam's ducks."</p>
+  <p>Opi's smile faded. Pam's ducks went everywhere. They carried birthday wishes and recipes and gossip, and they had never once stopped coming.</p>
+  <p>"Where will you go?"</p>
+  <p>"Ayaluna first. It's the closest, and Aya hasn't sent word." Neya stood. "If she's in trouble, I want to know. If she isn't, she can help me find out who is."</p>
+  <p>Opi caught her hand before she could go. "Be careful. Kannca was waiting for you. What if the rest of them are too?"</p>
+  <p>"Then they'll be sorry they waited." Neya squeezed her hand. "Rest. Eat something sweet. That's an order from your Empress."</p>
+  <p>"You never give orders."</p>
+  <p>"Then it's a favour from your friend."</p>
+  <p>By noon the black ships of the Hangkas were sliding out of the harbour, the great serpents swimming ahead to pull them through the wild currents. Along the shore, the people of Opita put down their hammers and waved until the fleet was gone.</p>
+  <p>Neya didn't look back. She was already looking east, toward Ayaluna, and toward the dark clouds gathering over the centre of the realm.</p>
+</article>
+
+<article class="chapter sheet" id="ch8" data-act="2">
+  <figure class="portrait">
+    <img src="images/ch8-tulip-blessing.jpg" alt="Jasmyn's dragon and Kaylee's bear glowing in Maureen's tulip armour">
+  </figure>
+  <h2>Chapter 8 — Tulips and Roses</h2>
+  <p>On Western Moyin, fields of pink and gold tulips ran all the way up the hill to Maureen's palace. People used to say their scent helped artists dream. Now they burned in rows, the petals turning to embers under cannon fire.</p>
+  <p>Kaylee roared from the back of her armoured bear, a huge beast plated in greenstone, its fur wet with rain. Around her the soldiers of Kayleeville charged, and the ground shook under their feet.</p>
+  <p>Above them Jasmyn dove through the smoke on her dragon. Along the coast her mermaids sang back to her and hurled spears of crystallised salt into the red army.</p>
+  <p>The two queens met in the middle of the field, out of breath, their faces streaked with ash and pollen.</p>
+  <p>"Still standing?" Jasmyn called.</p>
+  <p>"Still swinging," Kaylee said. "But they hit harder than they should. Look at them."</p>
+  <p>The red soldiers' armour glittered with tulip petals and, worse, with streaks of rose red. Their skin had a faint glow. Two kinds of magic at once: Maureen's tulip craft, and the rosecraft of KZ Roselynd.</p>
+  <p>Jasmyn's eyes narrowed. "Tulips and roses. They've already been north."</p>
+  <p>"Which means KZ has fallen," Kaylee said quietly.</p>
+  <p>"Queen Kaylee. Queen Jasmyn."</p>
+  <p>They turned. One of Moyin's royal enchanters was limping toward them, leaning on a wand carved from a tulip stem.</p>
+  <p>"Her Majesty left something for you," he said. "She said if you ever came, I should give you this."</p>
+  <p>He raised the wand. The ground trembled, and tulips burst up out of the burnt soil, fast and glowing, spiralling across the field in pink light. The petals wrapped around claws and fur and scales and hardened into bright pink armour that shone like glass.</p>
+  <p>"It won't last," the enchanter said. "A few minutes. But for those minutes, nothing can stop you."</p>
+  <p>Kaylee grinned and climbed higher on her bear's shoulders. "A few minutes is plenty."</p>
+  <p>Jasmyn drew her sword. "Then let's go and get her back."</p>
+  <figure>
+    <img src="images/ch8-moyin-palace.jpg" alt="Jasmyn's dragon and Kaylee's bear storming Moyin's palace">
+  </figure>
+  <p>They hit the palace together. Kaylee's bears came from the south and tore down the gates. Jasmyn's dragons dove from the north while the mermaids ripped open the sea walls. The tulip armour made all the difference. Where the red army's enchanted plates had shrugged off steel before, dragonfire now cracked them, and bear claws split them like dry bark. The red lines bent, and then they broke.</p>
+  <p>Kaylee pushed past the last of the rubble into the throne room.</p>
+  <p>The throne was empty.</p>
+  <p>She checked the side rooms, the servants' halls, the hidden space under the dais. Nobody. No queen. And there had been far fewer soldiers than there should have been, as if most of them had left before the fight even started.</p>
+  <p>Jasmyn's dragon landed on the balcony, and she slid down. "Did you find her?"</p>
+  <p>"No." Kaylee clenched her fists. "Most of them were already gone."</p>
+  <p>A young soldier ran in, white in the face. "My queen! There's someone in the old prison. Calling for help."</p>
+  <p>They ran.</p>
+  <p>In the darkest cell, a handful of tulip enchanters lay on the floor, grey-skinned and hollow-eyed, broken wands in their hands. When the medics pressed salve into their palms, one of them found just enough strength to speak.</p>
+  <p>"They took her. Maureen. And the other enchanters. Sailed east, to Eastern Moyin. KZ too, and her rose knights." His head drooped. "They made us enchant their soldiers. Rock and rose and tulip, so nothing can touch them. They're draining us dry."</p>
+  <p>Kaylee's anger hit her so fast her vision blurred. She threw off her cloak.</p>
+  <p>"To the ships!" she roared, already halfway down the steps. "We go east. Now. We take her back."</p>
+  <p>Jasmyn caught her arm. "Kaylee."</p>
+  <p>"Then fly me there. We'll chase them down on your dragons."</p>
+  <p>"No." Jasmyn didn't let go. "Listen. You can't sail there without the Grand Map. And the tulip armour is already fading. Without it, our claws and fire won't get through their armour. You saw how empty this place was. Most of their army has already gone east. We'd be flying straight into a trap."</p>
+  <p>"So we do nothing?" Kaylee's voice dropped low. "They took Maureen. They took KZ."</p>
+  <p>"We do what saves the most people. Rahel's salves need to reach every kingdom, and right now I'm the only one who can carry them. I'll take these enchanters to Rahel. As soon as the healers are moving, I'll come back. Then we go east together."</p>
+  <p>Kaylee looked at the broken enchanters, at the empty throne, at the red lights blinking far across the water. The fight drained out of her slowly, like heat from a stone.</p>
+  <p>"Fine," she said at last. "Go. I'll hold Moyin. I'll get every smith and every tulip grower we've got and rebuild these walls. And when you come back…"</p>
+  <p>"I'll bring fire," Jasmyn said. "I promise."</p>
+  <p>Jasmyn gathered what she could: a stretcher for the enchanters, a few mermaid nurses, a crate of salve from the palace stores. She strapped it all to her dragon.</p>
+  <p>"Keep Maureen's throne warm," she said.</p>
+  <p>"Nobody's taking these islands while I'm here."</p>
+  <p>The dragon lifted into the smoky sky, wings beating hard south toward Rahel's Empire. Kaylee turned back to her bear and the slow, heavy work of getting ready for war.</p>
+  <p>Over the blackened fields, the last tulip petals drifted down like small, sad stars.</p>
+</article>
+
+<article class="chapter sheet" id="ch9" data-act="2">
+  <figure>
+    <img src="images/ch9-broccoli-cave.jpg" alt="Zav's broccoli soldiers gathered in the mountain cave">
+  </figure>
+  <h2>Chapter 9 — The Holy Broccoli</h2>
+  <p>The fields of the Broccolingdom smelled of steam and spilled grain.</p>
+  <p>The neat green rows were ruined, torn up by the tracks of the red army. The animal pens were empty. Wagons lay on their sides in the mud. Red soldiers moved across the plain like locusts, hauling sacks of seed into their carts.</p>
+  <p>Between the stalks, a single broccoli head rose up. It wasn't a plant. It was a soldier's helmet, shaped like a tight green floret. Underneath it, one of King Zav's scouts lay flat on his belly, breathing slowly, watching.</p>
+  <p>The kingdom had surrendered to save its farms from burning, and the red army had taken everything anyway. Most of Zav's people had been captured or scattered. Enemy banners hung over the capital.</p>
+  <p>The scout crawled up the slope. At the top of the ridge he stopped. Far off over the eastern hills hung a cluster of pink clouds. Thin, soft and glowing. If he hadn't been looking for it, he would have thought it was just the sunset.</p>
+  <p>He was looking for it.</p>
+  <p>He jumped up and ran.</p>
+  <div class="break"></div>
+  <p>The cave in the mountains smelled of soup and old bandages. Lanterns burned low. Women hummed as they wrapped the wounded, and children slept in piles of blankets. In the middle of it all moved King Zav, never still, never slow: patching a torn sleeve, tasting a ladle of broth, fixing a splint with the same quick fingers that once grew the finest broccoli in the realm.</p>
+  <p>The scout stumbled in. "My king! Pink clouds over the east ridge. It's Laura. She's here."</p>
+  <p>For a moment, relief crossed Zav's face. "Laura's lanterns," he said softly. "Of course she came looking."</p>
+  <p>Everyone in the cave had gone quiet.</p>
+  <p>"Then tonight," Zav said, "we take the capital. Only for a little while. We break in, climb the holy broccoli, and Laura's lanterns lift our people off the top. We don't need to hold the city. We just need a way out."</p>
+  <p>One of his generals stepped forward. "My king, the women, the children, the wounded. How? The walls are crawling with guards. If we charge, they'll cut us to pieces."</p>
+  <p>"I know you're worried, my broccoli people," Zav said. "I'm worried too." He looked over at the children. "So listen. At midnight I'll clear a path from the mountain to the walls. You bring the wagons and the wounded behind me, and you protect the ones who can't fight. We make a supply line, and we keep it open. We don't just run in like fools."</p>
+  <p>"Let us go with you, my king."</p>
+  <p>"No." Zav smiled. "I'm still the fastest broccoliman this realm has ever seen. I go first. You hold the line behind me." He tapped the old horn on his belt, carved with harvest patterns. "I clear the throat. You hold the body."</p>
+  <p>The generals looked at each other, worried and proud at the same time. Then they bowed and went to get ready.</p>
+  <div class="break"></div>
+  <p>Midnight.</p>
+  <p>The villages around the capital were empty and dark, their houses looted bare. The capital walls were another story. They were packed with guards, and inside, the red army was busy counting and loading everything it had stolen, ready to send it to the front.</p>
+  <p>Then Zav struck.</p>
+  <p>There was a flicker of green lightning, and the guards outside the walls were down before they knew anything had happened. Not one of them saw him. Not one of them felt it.</p>
+  <figure>
+    <img src="images/ch09a-green-lightning.jpg" alt="Zav racing past the walls as a streak of green lightning">
+  </figure>
+  <p>Behind him the broccoli army poured down the mountain, building their supply line as they went. Some stayed back to guard the rear while the rest charged the western gate. By the time the red army sounded the alarm, Zav was already standing on top of the gate.</p>
+  <p>Too late.</p>
+  <p>Under the western gate grew an old broccoli tree, and behind it was a door that only the royal family knew about. Zav pulled it open. Behind it, a narrow stair spiralled up through the inside of the walls and into the stem of the holy broccoli itself, the tallest point in the whole kingdom.</p>
+  <p>"Go!" he shouted. "Up, up, all the way to the top!"</p>
+  <p>His people streamed through the door while Zav and his generals held off the red army. Zav was everywhere at once, a green blur. He knocked swords out of hands, tripped soldiers over each other, and was back at the door before anyone could follow.</p>
+  <p>At the top of the holy broccoli, the night sky was full of pink light.</p>
+  <p>Laura's lanterns drifted down out of the clouds: dozens of them, glowing like soft pink moons, with baskets hanging underneath. Laura's people leaned over the sides, reaching out their hands. One by one, families climbed in, and one by one the lanterns rose away into the dark.</p>
+  <figure>
+    <img src="images/ch09b-lanterns.jpg" alt="Pink lanterns lifting Zav's people off the holy broccoli">
+  </figure>
+  <p>When most of his people were safe, Zav came up last, breathing hard and grinning. He climbed into the final lantern and looked around.</p>
+  <p>"Where's Laura?" he asked.</p>
+  <p>The lantern pilot coughed. "Her Majesty, er… was too shy to come."</p>
+  <p>Zav blinked. "Too shy?"</p>
+  <p>"And she needs to stay home," the pilot added quickly, "in case anything bad happens."</p>
+  <p>Zav looked back at his captured capital, then up at the soft pink lights carrying his people away. He laughed for the first time in days.</p>
+  <p>"Then I'll have to thank her in person."</p>
+</article>
+
+<article class="chapter sheet" id="ch10" data-act="2">
+  <h2>Chapter 10 — The Storm Wakes</h2>
+  <p>"Kill them."</p>
+  <p>The crossbows on the rooftops clicked. Nonne's soldiers closed in with their shields locked. Naya's shoulder was soaked with blood, and his best man lay still behind him.</p>
+  <p>Nonne walked toward him herself, slow and sure, and drew her sword.</p>
+  <p>"I always wondered what Neya saw in you," she said. "Let's see if she cries."</p>
+  <p>Naya's heart beat once. Then again. Louder.</p>
+  <p>It wasn't a heartbeat any more. It was thunder.</p>
+  <p>Something inside him broke open. The air around him went white and soft and huge. Clouds rolled out from nowhere, from everywhere, gathering at his back and around his arms like a great cloak. His hair lifted. Lightning crackled across his skin, and he felt lighter than he had ever felt in his life.</p>
+  <p>And he laughed.</p>
+  <p>Nonne's sword came down.</p>
+  <p>It hit nothing. Naya was already behind her. He struck once, a flash of white that lit the whole square, and Nonne flew across the plaza and slammed into the fountain.</p>
+  <p>The crossbows fired. The clouds simply swallowed the bolts. Then the clouds kept going. They poured over the rooftops and wrapped around every assassin up there like big, soft fists. They rolled through the alleys and scooped up soldiers by the dozen. Shields, swords and crossbows dropped onto the cobbles as red soldiers kicked helplessly, stuck inside the clouds and floating a few feet off the ground.</p>
+  <figure>
+    <img src="images/ch10-storm-wakes.jpg" alt="Naya bursting into cloud and lightning in Pam's plaza">
+  </figure>
+  <p>It took less than a minute.</p>
+  <p>When it was over, the whole red army in the square hung in the air, wrapped up like presents. Pam's people stood frozen, staring. Then someone started cheering, and then everyone was.</p>
+  <p>The clouds around Naya slowly faded, and he sat down hard on the edge of the fountain, next to the groaning Nonne.</p>
+  <p>"Well," he said, out of breath. "That's new."</p>
+  <div class="break"></div>
+  <p>Pam threw her arms around him so hard he winced.</p>
+  <p>"Sorry, sorry, your shoulder." She was crying and laughing at the same time. "Naya, I wasn't… I need you to know I wasn't on their side."</p>
+  <p>"I know," Naya said. "I saw where the crossbows were pointing."</p>
+  <p>Pam wiped her face. "They came weeks ago. Nonne said that if I sent a single duck, or told a single visitor, or did anything at all except smile and act normal, her soldiers would start shooting my people. So I smiled. Every day, I smiled." Her voice cracked. "I'm so tired of smiling."</p>
+  <p>"You kept them alive," Naya said. "That's what matters."</p>
+  <p>"What about Bina?" he asked, looking south toward the music that had gone quiet. "Is she alright?"</p>
+  <p>Pam shook her head. "I don't know. Nonne's soldiers came from the south, so they must have gone past her island first. I haven't heard a thing."</p>
+</article>
+
+<article class="chapter sheet" id="ch11" data-act="2">
+  <h2>Chapter 11 — Duck Soup and a Lost Map</h2>
+  <p>They tied Nonne to a chair in Pam's palace kitchen, because it was the only room with a lock big enough.</p>
+  <p>She didn't struggle. She just watched Naya with that same small, sharp smile.</p>
+  <p>"Why?" Naya asked. "You stood next to Neya for years. Why this?"</p>
+  <p>"You wouldn't understand."</p>
+  <p>"Try me."</p>
+  <p>Nonne looked at the window for a long moment. "This realm is going to change, Pirate King. Something old is coming back. Something your Empress buried a long time ago. When it wakes up, it'll take this whole realm, and everyone who stood in the way will be gone."</p>
+  <p>"Something old?"</p>
+  <p>"A demon." She said it the way you'd say the weather. "We're going to bring her back. And then the realm of Neya won't be Neya's any more."</p>
+  <p>Naya's face didn't move, but his hands went cold.</p>
+  <p>"Then tell me about the Grand Map," he said. "How did you break it? And how are your ships sailing without it?"</p>
+  <p>For the first time, Nonne's smile slipped. "That," she said, "isn't mine to tell."</p>
+  <p>A red mark glowed on the inside of her armour. It burned brighter and brighter, and Naya understood a second too late.</p>
+  <p>"Everyone down!"</p>
+  <p>He threw up a wall of cloud just as Nonne exploded. The blast shook the whole palace and blew out every window in the kitchen. When the smoke cleared, the chair was gone, and so was she.</p>
+  <p>Pam stared at the scorch mark on the floor. "She'd rather do that," she whispered, "than tell you one thing?"</p>
+  <p>"Whoever she was protecting," Naya said slowly, "she was more afraid of them than of me."</p>
+  <div class="break"></div>
+  <p>That evening Pam cooked.</p>
+  <p>She said it was the only thing she knew how to do when everything was falling apart. She made roast duck with her secret chilli sauce, duck noodle soup, crispy duck pancakes and a sticky duck rice that smelled so good Naya's whole crew drifted into the kitchen without being called.</p>
+  <p>It wasn't ordinary food. Every bite filled them with warmth, all the way down to their toes. Naya's shoulder stopped throbbing. His crew's cuts closed over. The tiredness of the last few days melted away.</p>
+  <p>"Pam," Naya said, on his third bowl. "This is the best thing I've ever eaten."</p>
+  <p>"I know," Pam said, and for the first time in weeks her smile was a real one.</p>
+  <p>After dinner, she opened the duck pens.</p>
+  <p>Hundreds of messenger ducks burst out into the evening sky, quacking happily, with letters tied to their legs. They flew to every corner of the realm: to Rahel, to Talitha, to Kaylee, to the eastern queens. They carried the news of what had happened here, and the warning Nonne had let slip. Pam's ducks were flying again, and the realm could talk again.</p>
+  <figure>
+    <img src="images/ch11-ducks-balcony.jpg" alt="Pam and Naya on the balcony as hundreds of ducks fly out">
+  </figure>
+  <p>"That's why they held me," Pam said quietly as she watched them go. "Not for my food. For my ducks. If nobody can send a message, nobody knows what's happening anywhere else. Everyone thinks they're alone."</p>
+  <p>Naya nodded. "Take the food. Cut the messages. Wipe the map." He counted it out on his fingers. "Then the whole realm falls apart on its own."</p>
+  <p>The first duck to come back was from Bina.</p>
+  <p>Pam unrolled the letter and read it out loud. "'Hi Pam! A big red army landed on my beach last week. They were very tired. Most of them decided to go on holiday instead of fighting, which honestly, fair. I took care of the rest. A few got past me and went your way, sorry about that! Hope you're okay. I'm on the beach. Love, Bina.'"</p>
+  <p>Naya put his face in his hands and laughed until his shoulder hurt again.</p>
+  <div class="break"></div>
+  <p>Later, when the palace was quiet, Pam found him on the balcony, looking at the sea.</p>
+  <p>"Naya. How does the Grand Map actually work? Everyone talks about it, but nobody ever explains it."</p>
+  <p>He held up his hand. On one finger was a plain silver ring, worn smooth.</p>
+  <p>"This is the Grand Map," he said. "The Ring of the Sea. Long ago, my crew and I sailed to every kingdom and charted them, every current, every wind, every safe road through the water. All of it went into this ring. As long as the ring remembers, the sea stays calm and everyone can sail."</p>
+  <p>"And now it doesn't remember."</p>
+  <p>"Just before the war started, its memory was wiped. All of it, in one night." He turned the ring on his finger. "That kind of thing doesn't happen by itself. Somebody used forbidden magic on it. Old, dark magic. The same kind of magic you'd need to wake up a demon."</p>
+  <p>Pam shivered. "Can you fix it?"</p>
+  <p>"I can chart the realm again, kingdom by kingdom. It's going to take time." He looked down at the ring. "And maybe this ring isn't strong enough any more. If someone could break it once, they could break it again. The realm might need a new one. A stronger one."</p>
+  <p>Out on the dark water, the last of Pam's ducks disappeared into the night, carrying the news everywhere at once.</p>
+</article>
+
+<article class="chapter sheet" id="ch12" data-act="2">
+  <h2>Chapter 12 — The Elephant City</h2>
+  <p>Ayaluna was walking.</p>
+  <p>Neya had seen it many times, but it still took her breath away. The whole kingdom was built on the back of a colossal elephant, so big that clouds caught on its shoulders. Houses and towers covered its back like a forest. Bridges hung from its ears. Every step it took shook the sea.</p>
+  <p>Aya's soldiers met Neya on the shore with a smaller elephant, which was still enormous, and a rope ladder. They climbed for what felt like an hour, up the great elephant's leg, along its side and into the city on its back.</p>
+  <p>Queen Aya was waiting at the very top, her navy robes blowing in the wind. When she saw Neya, she ran the last few steps and hugged her.</p>
+  <figure>
+    <img src="images/ch12-elephant-city.jpg" alt="Aya hugging Neya on a balcony of the city on the giant elephant's back">
+  </figure>
+  <p>"You're alive," Neya said, and only then realised how scared she'd been.</p>
+  <p>"Of course I'm alive. They tried to land on us." Aya grinned. "My elephant sat on them."</p>
+  <p>Neya laughed out loud.</p>
+  <p>But Aya's smile didn't last. "Neya, how did you even get here? Nothing can sail right now. My own ships haven't left the harbour in weeks."</p>
+  <p>"My serpents tow us," Neya said. "Naya's shipmasters built my fleet so the serpents could pull it straight through the wild currents. He carved the <em>Serpent Moon</em> himself." She shrugged. "Nobody else could copy it. My serpents won't listen to anyone but me, and pirates never share their shipbuilding secrets."</p>
+  <p>Aya raised an eyebrow. "He carved you a whole ship?"</p>
+  <p>"Don't," Neya said.</p>
+  <p>"I didn't say anything."</p>
+  <p>"Your face did."</p>
+  <p>Aya laughed, then grew serious again and led her to the edge of the city, where they could see all the way to the horizon.</p>
+  <p>"Two days ago," Aya said, "one of my scouts saw a fleet. A huge one, the biggest anyone has ever seen. Red sails, coming from the north and heading south. Straight for Eastern Moyin."</p>
+  <p>"The centre of the realm," Neya said.</p>
+  <p>"And it came from the direction of KZ Roselynd." Aya's hands tightened on the railing. "I haven't heard from KZ in weeks, Neya. I think the castle has already fallen."</p>
+  <p>Neya was quiet for a moment. Then she nodded.</p>
+  <p>"Then we split up," she said. "You go to KZ. Your army can march there over land, and nobody fights on land like Ayaluna. Take the castle back and find out what happened."</p>
+  <p>"And you?"</p>
+  <p>"I'm going to the centre." Neya looked south, where the red fleet had gone. "Whatever they're planning, that's where it's happening."</p>
+  <p>Aya grabbed her hand. "Be careful. Please."</p>
+  <p>"I'm always careful."</p>
+  <p>"You are never careful."</p>
+  <p>Neya smiled. "Then I'll start today."</p>
+</article>
+
+<article class="chapter sheet" id="ch13" data-act="2">
+  <h2>Chapter 13 — The Eastern Council</h2>
+  <p>Cinta Island smelled of roses and sea salt, and the beach was covered in red soldiers holding hands.</p>
+  <p>Naya stopped at the end of the dock and stared. There were dozens of them, sitting in the sand in pairs, gazing into each other's eyes, some of them writing poems. Nobody was guarding them. Nobody needed to.</p>
+  <p>"Love spells," said a voice beside him. Queen Cinta had come down to meet him, her pink crown glinting in the sun. "They tried to invade. I made them fall in love with each other instead. It's very hard to fight when you'd rather be holding hands."</p>
+  <figure>
+    <img src="images/ch13-cinta-beach.jpg" alt="Cinta's beach full of lovestruck red soldiers">
+  </figure>
+  <p>"That's terrifying," Naya said.</p>
+  <p>"Thank you." She smiled. "Come on. Everyone's waiting."</p>
+  <p>The council was meeting in Cinta's rose garden. Around the stone table sat three more queens. Jeje of the Jecroft Islands, in her gold armour, a map spread out in front of her. Samantha of Sam's Kingdom, with soot still on her hands from the forges. And Yopis of Yopisheim, cold and straight-backed in her ice-silver crown, who looked at Naya the way you'd look at a shark that had walked into your kitchen.</p>
+  <p>"Pirate," Yopis said.</p>
+  <p>"Queen Yopis."</p>
+  <p>"My people spent years keeping your kind off our shores."</p>
+  <p>"I remember," Naya said. "You were very good at it."</p>
+  <p>Something that might have been the start of a smile crossed Yopis's face, and was gone again. "Neya trusts you," she said. "So for now, I'll try to. Sit down."</p>
+  <p>He sat.</p>
+  <p>"We questioned the prisoners," Cinta said. "When you're in love, you'll tell anyone anything. They told us who sent them." She paused. "They call him Emperor Raian."</p>
+  <p>Naya went very still.</p>
+  <p>"They're not ordinary soldiers," Cinta went on. "They worship a demon. One the realm forgot a long time ago. They're trying to wake her up. That's all they know. They don't even know her name."</p>
+  <p>Jeje was watching Naya. "You know that name," she said. "Raian."</p>
+  <p>Naya didn't answer for a moment. Then he said, "Tell me the rest of the news first."</p>
+  <p>Jeje let it go, but she didn't stop watching him.</p>
+  <p>"It's bad," she said. "My islands stretch along both the north-east and south-east of the great island, so my people hear everything. Zav's Broccolingdom has fallen. So has Shareen's Mart. And there's a war at Beryl Kingdom, right in the middle of the great island. Mayzha and Sharleen are holding the line together, but they're outnumbered."</p>
+  <p>"And there's a general," Samantha said. "Tama. My scouts say he fights at the very front of his army, with fire. They say nobody who faces him walks away."</p>
+  <p>Jeje tapped the map. "I can get my people across the sea through my tunnels. Underground. But I can't move whole armies that way. Not enough room." She looked up at Naya. "You, on the other hand."</p>
+  <p>"I can calm the sea," Naya said. "Not all of it. Only the water around me and my ships. But anything that sails in my wake can follow."</p>
+  <p>"Then you came at the perfect time," Cinta said. "You can take Yopis's fleet and Sam's army to Beryl."</p>
+  <p>They made the plan before the sun went down. Cinta would stay behind and guard the south-eastern kingdoms. Jeje would take her adventurers into the tunnels to find out what the red army was planning. Naya, Yopis and Sam would sail for Beryl.</p>
+  <p>As the others left, Jeje hung back.</p>
+  <p>"Raian," she said quietly. "Who is he, Naya?"</p>
+  <p>Naya looked out at the sea for a long time.</p>
+  <p>"Someone I used to know," he said. And that was all.</p>
+</article>
+
+<article class="chapter sheet" id="ch14" data-act="2">
+  <h2>Chapter 14 — Thorns on the Water</h2>
+  <p>Aya took KZ Roselynd back in a single afternoon.</p>
+  <p>It was almost too easy. Her elephants marched over the hills, and the red soldiers left to guard the rose castle took one look at them and ran. There were barely any of them left. Most had already sailed south.</p>
+  <p>But when Aya walked into the castle, her stomach dropped.</p>
+  <p>The rose gardens had been stripped bare. The workshops were empty. The storerooms where KZ kept her rosewood and rose enchantments had been cleaned out completely. And the enchanters, every single one of them, were gone.</p>
+  <p>Aya stood in the empty workshop and looked south.</p>
+  <p>"They're not just stealing roses," she said to her captain. "They're stealing the magic. And they're going to use it on something." She thought of Neya, sailing straight toward that fleet. "Send a rider. Fast."</p>
+  <p>But the rider would be far too late.</p>
+  <div class="break"></div>
+  <p>Neya was angry.</p>
+  <p>She had been angry since Opita, and it had only grown. Everyone in this realm was her friend. Opi, Pam, Maureen, KZ. Every one of them. Someone was hurting them one by one, and she was tired of arriving after the damage was done.</p>
+  <p>So when her lookouts spotted the red fleet near the centre of the realm, she didn't wait.</p>
+  <p>"Full speed," she ordered. "Straight at them."</p>
+  <p>Her captain hesitated. "Your Majesty, we don't know how many…"</p>
+  <p>"It doesn't matter. Go."</p>
+  <p>Her serpents surged forward, pulling the black ships through the waves. The red fleet grew bigger and bigger. Then, just as they came in range, the red ships turned side-on and opened their gun ports.</p>
+  <p>The cannons didn't fire iron.</p>
+  <p>They fired light. Pink and red, blooming in the air like flowers. Rose and tulip magic, packed into every shot. When the first one hit a Hangkas ship, the deck burst into thorny vines that tore the planks apart. The next one hit a serpent, and the serpent shrieked as petals hard as steel cut into its scales.</p>
+  <figure>
+    <img src="images/ch14-thorns-on-the-water.jpg" alt="Rose and tulip cannon fire blooming into thorns over Neya's fleet">
+  </figure>
+  <p>Neya's stomach dropped. She had seen this before, on the armour of red soldiers. She had never thought they could turn it into this.</p>
+  <p>"Fall back!" she shouted. "Fall back!"</p>
+  <p>It was too late for many of them. Shot after shot tore through her fleet. Ships cracked and sank. Men went into the water. Her serpents fought to drag the survivors away from the guns while the red fleet sailed on, untouched, toward Eastern Moyin.</p>
+  <p>By nightfall, what was left of the Hangkas fleet limped onto the shore of Western Moyin.</p>
+  <div class="break"></div>
+  <p>Kaylee met her on the beach. She didn't say anything at first. She just pulled Neya into a hug that nearly cracked her ribs.</p>
+  <p>"I charged," Neya said into her shoulder. "I didn't think. I just charged."</p>
+  <p>"I know," Kaylee said. "I almost did the same thing a few days ago. Jasmyn stopped me." She let go and looked Neya in the eye. "Nobody stopped you. That's all."</p>
+  <p>That night they sat by a fire on the beach and compared everything they knew. The armour that shrugged off swords. The cannons that bloomed into thorns. The enchanters taken from Moyin and from KZ.</p>
+  <p>"It's Maureen's magic," Kaylee said. "And KZ's. They're using our friends' own power against us."</p>
+  <p>Neya stared into the fire. "Then we're not attacking again until we're ready. Properly ready."</p>
+  <p>"Jasmyn's coming back," Kaylee said. "She promised. With dragons."</p>
+  <p>"Then we wait for Jasmyn," Neya said.</p>
+  <p>Out on the dark water, far to the east, the red fleet's lights glowed over Eastern Moyin like a crown.</p>
+</article>
+
+<article class="chapter sheet" id="ch15" data-act="2">
+  <h2>Chapter 15 — The Book in the Library</h2>
+  <p>Rahel's healing halls were full.</p>
+  <p>Every bed held someone: the tulip enchanters from Moyin, soldiers from the front, mermaids with salt burns. Jasmyn had been helping for days, carrying water and bandages, and she was so tired she could barely see straight. But the enchanters were waking up now. Their skin was getting its colour back.</p>
+  <p>"Your dragonriders are ready," Rahel told her. "Every saddlebag is full of salve. Your riders can take it to every kingdom that needs it."</p>
+  <p>"Good," Jasmyn said. "Then I'm going back to Kaylee. I promised her."</p>
+  <p>Before she could leave, something white flapped in through the library window, crash-landed on a pile of books and quacked loudly.</p>
+  <p>A duck.</p>
+  <p>Rahel and Jasmyn looked at each other. Then they both ran for it.</p>
+  <p>The letter on its leg was from Pam, and it had everything: the ambush at Pam's Wonderland, Naya's clouds, Nonne's capture and her terrible end. And the warning Nonne had given before she died.</p>
+  <p><em>They're trying to bring back a demon. Something the Empress buried a long time ago.</em></p>
+  <p>Jasmyn read it twice. "A demon? What demon?"</p>
+  <p>Rahel had gone pale. Without a word she walked into the deepest part of her library, where the oldest books were kept, and came back with a heavy volume bound in grey leather. She set it on the table and opened it.</p>
+  <p>"There was a war," she said. "A long time ago. Before Moyin took the centre island for its own. Before most of our kingdoms even had names." She turned the brittle pages carefully. "It was fought against a demon of pure hatred."</p>
+  <p>Jasmyn leaned in. The page showed a drawing of a woman in a black crown. Her face had been scratched out.</p>
+  <figure>
+    <img src="images/ch15-the-grey-book.jpg" alt="Rahel and Jasmyn over the old grey book">
+  </figure>
+  <p>"Who is she?"</p>
+  <p>"Nobody knows. That's the point." Rahel ran her finger along the text. "Her name was erased from history. Every book, every song, every memory. All gone. It says she was once an ordinary woman of this realm. But she was so full of jealousy and insecurity and spite that she turned to forbidden magic and made herself into a demon."</p>
+  <p>"And then?"</p>
+  <p>"And then Neya defeated her." Rahel turned another page. "The writer says the whole realm was terrified of her. Her power was the most frightening thing anyone had ever seen. But when Neya was asked about her afterward, she said only one thing." Rahel read it out. "'She was a very boring villain.'"</p>
+  <p>Jasmyn laughed in spite of herself. "That sounds like Neya."</p>
+  <p>"It does." Rahel didn't laugh. "But the person who wrote this didn't think she was boring. They thought she was the end of the world."</p>
+  <p>She closed the book.</p>
+  <p>"If someone is trying to bring her back," she said, "Neya needs to know. Now."</p>
+  <p>Jasmyn was already running for her dragon.</p>
+</article>
+
+<article class="chapter sheet" id="ch16" data-act="2">
+  <h2>Chapter 16 — The Cat Kingdom Holds</h2>
+  <p>In Beryl Kingdom, even the soldiers were cats.</p>
+  <p>Cat archers lined the walls. Cat knights in tiny armour guarded the gates. And at the front of it all, on the highest tower, sat Beryl herself: a large, fluffy white cat in a crimson-and-gold gown and a small crown, watching the battle with cold green eyes. Next to her stood Queen Mayzha, sword in hand.</p>
+  <p>They were losing.</p>
+  <p>Queen Sharleen's knights had come from the north to help, with pink banners and silver armour, and they had held the line for days. But the red army just kept coming, and at the very front of it, every single time, was Tama.</p>
+  <p>He was huge, wrapped in red armour, and he fought with fire. When he swung his blade, flames poured out of it in long, roaring arcs. Walls melted. Shields turned to ash.</p>
+  <p>"He's not even tired," Sharleen said, wiping blood from her lip. "We've been fighting for three days and he's not even tired."</p>
+  <p>Mayzha was looking at the red army's camp behind Tama. Carts were going back and forth. Full carts coming in, empty carts going out.</p>
+  <p>"Look," she said. "Broccoli. And crates with Shareen's mark on them."</p>
+  <p>Sharleen frowned. "So?"</p>
+  <p>"So that's why they took the Broccolingdom and Shareen's Mart. Not to keep them. To feed this army. As long as those carts keep coming, they can fight forever."</p>
+  <p>A cat scout bounded up the tower steps and meowed urgently at Beryl. Beryl turned her head toward the sea, and everyone looked.</p>
+  <p>On the horizon, sailing past Beryl, was another red fleet. Bigger than the one they were fighting. Much bigger. It was heading west, toward Eastern Moyin.</p>
+  <p>"That isn't even for us," Mayzha whispered. "That's something else."</p>
+  <p>Below them, the gate cracked. Tama's fire was eating through it.</p>
+  <p>Sharleen raised her sword. "Then we'd better make our last stand a good one."</p>
+  <p>That was when the sky went dark.</p>
+  <p>Not with smoke. With clouds. Huge white clouds, rolling in from the south faster than any wind. Lightning flickered inside them. And under the clouds, sailing across a sea that had suddenly gone smooth as glass, came a fleet: Yopis's ice ships, Sam's war galleys, and at the front, a single blue pirate ship.</p>
+  <figure>
+    <img src="images/ch16a-storm-arrives-at-beryl.jpg" alt="Naya's storm rolling in over Beryl Kingdom">
+  </figure>
+  <p>The first bolt of lightning hit the red army's siege towers. The second hit their cannons. Then Yopis's fleet opened fire, and a wall of ice slammed down between the gate and the red army. Sam's soldiers poured onto the beach in black armour, every sword sharp from her own forges.</p>
+  <p>Naya landed on the wall in a burst of cloud, right next to Mayzha.</p>
+  <p>"Sorry we're late," he said.</p>
+  <p>Mayzha stared at him. Beryl the cat stared at him. Then Mayzha laughed, a little wildly. "You're not late. You're right on time."</p>
+  <div class="break"></div>
+  <p>With all five armies fighting together, the battle turned fast.</p>
+  <p>The red army had been ready to fight two queens. It wasn't ready to fight five, plus a storm. Their lines broke. Their soldiers ran for their ships.</p>
+  <figure>
+    <img src="images/ch16b-battle-of-beryl.jpg" alt="The battle of Beryl">
+  </figure>
+  <p>Across the battlefield, Naya saw Tama for the first time. The general stood in the middle of the burning field, fire curling around his blade, and stared straight back at him. Then he smiled, as if he'd recognised Naya. He turned and walked away into the smoke with his retreating army.</p>
+  <p>Naya watched him go and didn't follow. Not yet.</p>
+  <p>That evening, the five of them sat in Mayzha's half-wrecked throne room while cats brought bandages and tea.</p>
+  <p>"We can't go any further," Sharleen said honestly. "We've lost too many. My knights need to heal, and Beryl needs rebuilding."</p>
+  <p>"Then stay," Naya said. "You've done more than enough." He looked at Yopis and Sam. "But the red army is getting its food from Shareen's Mart. If we take that back, we cut off their supplies."</p>
+  <p>"And we find out what happened to Shareen," Sam said.</p>
+  <p>Yopis stood up. "Then we leave at dawn."</p>
+  <p>Beryl the cat, from the top of the throne, yawned in approval.</p>
+</article>
+
+<article class="chapter sheet" id="ch17" data-act="2">
+  <h2>Chapter 17 — Shareen's Toys</h2>
+  <p>Shareen's Mart used to be the busiest place in the east. Its streets were full of shops selling rare toys and shining crystals, and people came from all over the realm to buy things they didn't need.</p>
+  <p>Now it was full of red soldiers.</p>
+  <p>Naya, Yopis and Sam fought their way north, town by town, toward the capital. They built a supply line as they went, with Sam's wagons carrying food and weapons up behind them, so the army wouldn't run out halfway. The red army fought back hard. There were more of them here than at Beryl, and they knew how important this kingdom was to them.</p>
+  <p>But something kept bothering Naya.</p>
+  <p>"Where is everyone?" he said one night, standing in an empty market square. "Shareen's people. Where are they?"</p>
+  <p>Yopis looked around. "Prisoners, probably."</p>
+  <p>"Then where are the prisons? Where are the camps? We've taken six towns and haven't found a single one of Shareen's people. Not a prisoner. Not a body. Nothing."</p>
+  <p>Sam picked up a toy from the ground: a small soldier in pink armour, about the size of her hand. There were hundreds of them scattered around the square, on shelves, in windows, in the gutters.</p>
+  <p>"Strange," she said. "The red army emptied every shop in this town. But they didn't bother with the toys."</p>
+  <p>Naya looked at the toy soldier. The toy soldier, he could have sworn, looked back.</p>
+  <div class="break"></div>
+  <p>They reached the capital three days later.</p>
+  <p>The red army was waiting in front of the walls, more of them than Naya had ever seen in one place. Yopis drew her axe. Sam's soldiers locked shields. Naya called up his clouds.</p>
+  <p>And then, before anyone had swung a single sword, the red army began to fall.</p>
+  <p>Not from the front. From behind.</p>
+  <p>Soldiers at the back of the red lines dropped without a sound. Then the ones in front of them. Then the ones in front of those. It moved through the army like a wave, so fast that by the time the front line turned around to see what was happening, there was almost nobody left behind them.</p>
+  <p>Standing in the middle of the fallen red army were soldiers in pink armour. Small ones and tall ones, toy-bright and smiling, with crystal blades in their hands.</p>
+  <figure>
+    <img src="images/ch17a-the-toys-wake.jpg" alt="Pink toy soldiers standing over the fallen red army">
+  </figure>
+  <p>"Oh," Sam breathed. "The toys."</p>
+  <p>The last red soldiers threw down their weapons and ran.</p>
+  <div class="break"></div>
+  <p>Queen Shareen came out through the crystal gates to meet them, in a lilac dress, with round glasses and a crystal wand in her hand, looking extremely pleased with herself.</p>
+  <figure>
+    <img src="images/ch17b-shareen-greets.jpg" alt="Shareen greeting Naya, Yopis and Sam outside her crystal gates">
+  </figure>
+  <p>"Welcome," she said. "Sorry about the mess."</p>
+  <p>"You were toys," Naya said. "This whole time. Your whole kingdom."</p>
+  <p>"The moment the red army landed, I turned myself and every one of my people into toys," Shareen said. "Then we just sat on the shelves and waited. Nobody pays attention to toys." She smiled. "They walked right past us every day. They talked about everything in front of us."</p>
+  <p>"So what did they talk about?" Yopis asked.</p>
+  <p>Shareen's smile faded.</p>
+  <p>"They're gathering at the centre island. Eastern Moyin. Every red soldier in the realm is going there. They're going to bring back a demon." She tapped her wand against her palm. "They came here for supplies, along with the Broccolingdom's food. Lucky for us, everything they wanted from my kingdom was a toy at the time. They couldn't take anything useful." She looked very satisfied about that. "They've been living on broccoli."</p>
+  <p>"What else?" Naya asked.</p>
+  <p>"Their general. Tama. He's holding the western shore of the great island, the stretch of coast that faces the centre. Every supply ship going to Eastern Moyin leaves from there. If you want to stop them, that's where you have to go." She looked straight at Naya. "And you'll have to go through him."</p>
+  <p>Naya nodded slowly.</p>
+  <p>"Then here's the plan," he said. "Everyone hits the supply line. Ships, wagons, docks, all of it. Burn their food and they can't hold the centre."</p>
+  <p>"And Tama?" Sam asked.</p>
+  <p>Naya was already looking west.</p>
+  <p>"Tama's mine."</p>
+</article>
+
+<article class="chapter sheet" id="ch18" data-act="2">
+  <h2>Chapter 18 — A Name Nobody Says</h2>
+  <p>Jasmyn's dragon came down on the beach of Western Moyin in a spray of sand, and Kaylee was already running across the sand to meet her.</p>
+  <p>"You came back," Kaylee said.</p>
+  <p>"I said I would." Jasmyn slid down, saw Neya standing by the fire, and stopped. "Neya? What are you doing here? What happened to your fleet?"</p>
+  <p>"Long story," Neya said. "I'll tell you mine if you tell me yours."</p>
+  <p>Before either of them could start, the sea along the shore began to glow blue.</p>
+  <p>Vines rose out of the water: thick blue ones, twisting into a bridge, and walking across the bridge came Queen Talitha with a long line of blue-robed enchanters behind her.</p>
+  <p>"I heard you might need help," Talitha said. "And my garden can only grow so many barricades before it gets bored."</p>
+  <p>That night, the four of them sat around the fire, and Jasmyn told them everything. Pam's ducks. Naya's clouds. Nonne. And the book in Rahel's library, the demon of pure hatred whose name had been erased, the woman who had turned herself into a monster.</p>
+  <p>Neya listened without a word. When Jasmyn finished, she let out a long sigh.</p>
+  <p>"So that's who they want to bring back," she said. "That boring demon."</p>
+  <p>The other three looked at her.</p>
+  <p>"You know who she is," Talitha said.</p>
+  <p>"I know who she is." Neya poked the fire with a stick. "And I think I know who's behind all this too."</p>
+  <p>"Tell us," Kaylee said.</p>
+  <p>Neya hesitated. Then she said it.</p>
+  <p>"Her name was Hanji."</p>
+  <p>The moment the word left her mouth, the fire seemed to dim. Kaylee put a hand on her stomach. Jasmyn went pale. Talitha's hands, glowing softly a moment before, went dark.</p>
+  <figure>
+    <img src="images/ch18-the-name.jpg" alt="Four queens around a beach fire as it dims">
+  </figure>
+  <p>It wasn't just a name. It was a feeling: heavy, sick and sour, like waking from a nightmare you can't quite remember. And with it came memories they hadn't known they still had. A black crown. A cold voice. A woman who had wanted to tear the whole realm down and rule over the pieces, who couldn't stand to see anyone else happy. A woman who hated Neya because Neya wanted everyone to grow and do well together.</p>
+  <p>"I remember her," Jasmyn whispered. "How do I remember her? I didn't remember her five seconds ago."</p>
+  <p>"Naya and I made everyone forget her name," Neya said quietly. "We did it together, after she fell. Hearing it made people feel sick. So we took it away. The only ones who still knew it were the two of us."</p>
+  <p>"Then who…" Talitha started.</p>
+  <p>"There was one more." Neya's voice went hard. "Raian. He sailed on Naya's crew, a long time ago. He was in love with her. Secretly. When she fell, he left the realm, and nobody ever saw him again." She threw the stick into the fire. "Somehow, he still remembers her name. And if anyone could bring her back, it's him."</p>
+  <p>For a long while, nobody spoke. The old hatred sat with them by the fire, as fresh as the day they'd forgotten it.</p>
+  <p>"So how do we stop him?" Kaylee said finally. "They're on the centre island with a whole fleet. We can't sail there. Jasmyn can't carry everyone on dragons."</p>
+  <p>"And even if I could," Jasmyn said, "they'd shoot us out of the sky with those cannons."</p>
+  <p>Neya opened her mouth to answer, and then one of Kaylee's soldiers came running up the beach.</p>
+  <p>"Your Majesties! There's a door. Down in the cliffs. A door just opened in the rock, all by itself."</p>
+  <p>The four queens looked at each other.</p>
+  <p>"Jeje," Neya said, and for the first time in days she smiled. "She's alright."</p>
+  <p>They were already running.</p>
+</article>
+
+<article class="chapter sheet" id="ch19" data-act="2">
+  <h2>Chapter 19 — Fire and Thunder</h2>
+  <p>The western shore was on fire.</p>
+  <p>Yopis's ice ships rammed the red supply boats one after another. Sam's soldiers burned the docks. Shareen's toy army swarmed over the warehouses, cutting ropes and smashing crates. All along the coast, the red army's food and weapons went up in smoke.</p>
+  <p>And on a black rock at the edge of the sea, Naya stood face to face with Tama.</p>
+  <p>Up close, the general was even bigger than he had looked at Beryl. Heat poured off his armour. The air around him shimmered.</p>
+  <p>"Pirate King," Tama said. "I've wanted to meet you for a long time."</p>
+  <p>"I can't say the same."</p>
+  <p>Tama smiled. "You don't know who I am, do you? She never mentioned me." He tilted his head. "I loved her first, you know. Neya. I asked her to be mine, and she laughed at me. Then she chose you. A pirate. A thief who sails around in circles drawing maps."</p>
+  <p>Naya said nothing.</p>
+  <p>"So here's what's going to happen," Tama went on. "When this is over, when the demon is awake and this realm belongs to us, I'm going to find your Empress. And I'm going to make her fall to her knees, and she'll spend the rest of her life as my slave."</p>
+  <p>Naya drew his sword.</p>
+  <p>He didn't say anything at all.</p>
+  <div class="break"></div>
+  <p>Fire met lightning, and the sky exploded.</p>
+  <p>Tama's first swing threw out a wave of flame as wide as a street. Naya's clouds swallowed it, and the clouds hissed and burned away to nothing. Naya answered with a spear of lightning, then another, then ten more, a storm of white spears falling from the sky. Tama cut through them with his blade, and fire roared up to meet each one.</p>
+  <p>They fought across the rocks, across the beach, out over the water. Naya rose into the air on his clouds and Tama followed on a pillar of flame, and the fight went higher and higher, until the whole sky over the eastern realm was lit up red and white and gold.</p>
+  <p>Tama's fire was everything his scouts had said. Every cloud Naya called, Tama burned away. Every time Naya hid inside the storm, the fire found him. His cloak was scorched. His hands were blistered. His breath was coming short.</p>
+  <p>But Naya didn't stop. The lightning spears kept coming, never slowing, never stopping, one after another after another, until Tama's armour was cracked and smoking and he was breathing as hard as Naya was.</p>
+  <p>They broke apart, high above the sea, and hung there in the air, facing each other.</p>
+  <p>Both of them were at the end. Both of them knew it.</p>
+  <p>Tama raised his blade above his head, and every bit of fire he had left poured into it, until it burned so bright it was like holding the sun.</p>
+  <p>Naya closed his eyes.</p>
+  <p>He let his clouds go. All of them. They drifted out around Tama in a wide, soft ring, gentle as fog.</p>
+  <p>Then Naya pulled every drop of lightning in his body into his sword, and moved.</p>
+  <p>He didn't fly at Tama. He became thunder. For one instant he was the lightning itself, a single white line across the whole sky, and the sound came after him, a crack so loud they heard it on every island in the east.</p>
+  <p>Tama swung. But the clouds were all around him, thick and blinding, and he couldn't see where the strike was coming from.</p>
+  <p>Naya's sword went through him.</p>
+  <p>Through his armour, through his fire, through all of him, and out the other side. Tama hung in the air for one more moment, his blade still burning. Then the two halves of him fell, and the fire went out, and the sky went quiet.</p>
+  <figure>
+    <img src="images/ch19a-thunder-strike.jpg" alt="Naya's thunder strike">
+  </figure>
+  <div class="break"></div>
+  <p>Everyone in the east had seen it.</p>
+  <figure>
+    <img src="images/ch19b-the-realm-watches.jpg" alt="People watching the sky light up with fire and lightning far away">
+  </figure>
+  <p>In Beryl, the cats stood on the walls and stared at the sky. At Cinta's island, the lovesick prisoners stopped writing poems and looked up. On the road to Jeje's door, Neya stopped walking and watched the red and white light flicker far away in the east.</p>
+  <p>Kaylee came up next to her. "Is that…?"</p>
+  <p>"Naya," Neya said.</p>
+  <p>She watched until the last of the lightning faded. Her heart was pounding. But her voice, when she spoke again, was calm.</p>
+  <p>"He's got it," she said, and turned back toward the cliffs. "Come on."</p>
+  <div class="break"></div>
+  <p>Far away, high above the clouds, Naya was falling.</p>
+  <p>He had nothing left. No clouds, no lightning, not even enough strength to open his eyes. The fight had carried them so far that the sea below him wasn't the sea by the great island any more. It was the far east, where pink lanterns floated over the water.</p>
+  <p>"Neya," he murmured, to no one, as the wind rushed past. "I'll leave the rest to you."</p>
+  <p>He fell toward Laura's Island.</p>
+  <p>And something green flashed up to meet him: a streak of green lightning running up the side of a floating lantern, leaping off the top, catching him in mid-air.</p>
+  <p>Zav landed on a lantern platform with the Pirate King in his arms, breathing hard.</p>
+  <figure>
+    <img src="images/ch19c-zav-catches-naya.jpg" alt="Zav catching Naya on a pink lantern">
+  </figure>
+  <p>"Laura!" he yelled. "Laura, I need help! The Pirate King just fell out of the sky!"</p>
+</article>
+
+<article class="chapter sheet" id="ch20" data-act="2">
+  <h2>Chapter 20 — Under the Realm</h2>
+  <p>The door in the cliff was round, carved with gold leaves, and standing in the middle of it, leaning on her glowing green staff, was Jeje.</p>
+  <p>"Took you long enough," she said.</p>
+  <p>Neya hugged her. Jeje let her, for about two seconds, then patted her on the back and stepped away. "Alright, alright. Bring your armies. All of them. There's room."</p>
+  <p>"I thought your tunnels couldn't fit armies," Kaylee said.</p>
+  <p>"The tunnels I show people can't." Jeje smiled. "This isn't those."</p>
+  <p>Behind the door, a staircase spiralled down into the rock. They went down and down, past torches, past carved doorways, past the sound of running water. Then the stairs opened out, and all four queens stopped.</p>
+  <p>It was enormous.</p>
+  <p>A whole world under the ground. Caverns as big as cities, lit by glowing green stones. Bridges crossing over rivers. And everywhere, running off into the dark in every direction, there were rails. Railway tracks, hundreds of them, with little carts and long trains waiting on them. Jeje's people moved everywhere: checking maps, sending messages, watching strange mirrors that showed the surface far above.</p>
+  <figure>
+    <img src="images/ch20-jejes-maze.jpg" alt="Jeje's underground maze">
+  </figure>
+  <p>"This is the maze," Jeje said. "It runs under every kingdom in the realm. My people keep watch over all of it."</p>
+  <p>Talitha turned in a slow circle. "I never knew this was here."</p>
+  <p>"You're not supposed to. Nobody is. Nobody except Neya." Jeje gave them a look. "This is the realm's last defence. If everything else falls, this is what's left. So when this is over, I might have to make you all forget you were ever down here."</p>
+  <p>"Fine," Kaylee said immediately. "Don't care. Where's Raian?"</p>
+  <p>"Same," said Jasmyn.</p>
+  <p>"Same," said Talitha.</p>
+  <p>Jeje sighed. "Good. Because I wasn't going to give you a choice."</p>
+  <p>Neya was looking at the rails, the glowing stones, the old carvings on the walls. "It's been a long time since I was last down here," she said softly.</p>
+  <p>"It has," Jeje said. "Last time was the war with her."</p>
+  <div class="break"></div>
+  <p>Jeje unrolled a map on a stone table and told them everything.</p>
+  <p>"First, your pirate's alive." She looked at Neya. "My people saw the whole fight. He beat Tama. Then he fell, somewhere near Laura's Island. That's all I know."</p>
+  <p>Neya let out a breath she hadn't known she was holding. "He's alive."</p>
+  <p>"He's alive. Now listen." Jeje pointed at the centre island. "The red army's power comes from rose and tulip enchantments. They steal it from KZ and Maureen and the captured enchanters, and they pack it into their armour and their cannons. KZ and Maureen are being held here, in the great windmill on the east side of the island."</p>
+  <p>She moved her finger to the middle of the island. "And here, in the ruins of the old palace, is where Raian is getting ready to bring her back. There's a black stone in the middle. He's surrounded it with enchanters." Jeje looked up. "He's not just waking her. He's going to wrap her in rose and tulip magic, the same way they wrapped their soldiers. Then he'll control her, and with her, the whole realm."</p>
+  <p>"Then we split up," Neya said. "I'll go for Raian. The rest of you get KZ and Maureen out. If we cut off the enchantments, he loses his armour, his cannons, all of it."</p>
+  <p>Kaylee frowned. "You want to go alone? Again?"</p>
+  <p>"Not alone," Neya said. "With my soldiers. Every one I have left." She met Kaylee's eyes. "And this time I'm not charging. This time we're coming up from underneath, where they'll never expect it."</p>
+  <p>Kaylee looked at her for a long moment, then nodded.</p>
+  <p>The armies boarded the trains: Neya's soldiers in green and butter, Kaylee's bear warriors, Jasmyn's dragonriders with their dragons squeezed into the biggest carriages, Talitha's enchanters, and Jeje's adventurers riding on top. The carts began to roll, slowly at first, then faster, rattling down the dark tunnels toward the centre of the realm.</p>
+  <p>Nobody spoke much. They were all thinking the same thing.</p>
+  <p>Please let us be in time.</p>
+</article>
+
+<article class="chapter sheet" id="ch21" data-act="2">
+  <h2>Chapter 21 — The Ring of the Moon</h2>
+  <p>Naya woke up in a room full of pink light.</p>
+  <p>Paper lanterns hung from the ceiling. Through the round window he could see clouds drifting by, below him. Someone had bandaged his hands, his arms and most of his chest.</p>
+  <p>He sat up. Everything hurt. He started getting out of bed anyway.</p>
+  <p>"No, no, no." Zav was in the doorway in a flash, literally. "Lie down. You fell out of the sky."</p>
+  <p>"I have to go."</p>
+  <p>"You have to lie down."</p>
+  <p>Behind Zav, a small figure in pink robes peeked around the door frame: Queen Laura, her round glasses pushed up on her nose, holding a lantern in both hands.</p>
+  <p>"You should really rest," she said quietly. "You were very… broken."</p>
+  <p>"Thank you," Naya said. "Both of you. Really. But I can't stay." He held up his hand with the silver ring on it. "The Grand Map is still empty. I have to chart the whole realm again, every kingdom, before anyone can sail safely. And I've been thinking." He turned the ring. "This ring broke once. If someone did it once, they can do it again. I need to put the map into a new ring. A stronger one."</p>
+  <p>A duck flew in through the window, landed on the bed and quacked.</p>
+  <p>Zav untied the letter from its leg. It was from Pam, sent days ago: the news from her kingdom, from Rahel's library, about the demon. Naya read it twice and was quiet for a long time.</p>
+  <p>Laura shuffled her feet. "Um. About the ring."</p>
+  <p>They both looked at her. She went pink.</p>
+  <p>"There's a forge," she said. "Here, on the island. An old one. It's an ancient Chinese forge that belonged to my ancestors. They made all our lanterns' first flames in it. But nobody's been able to light it for a very long time. It needs more power than we have."</p>
+  <p>Naya was already getting out of bed.</p>
+  <div class="break"></div>
+  <p>The forge sat at the top of the tallest lantern tower: a great round furnace of red stone, with golden dragons curling around its sides and a pair of huge bellows shaped like dragon wings.</p>
+  <figure>
+    <img src="images/ch21-the-lantern-forge.jpg" alt="The lantern-tower forge with its golden dragons">
+  </figure>
+  <p>Naya put his hands on it.</p>
+  <p>He had almost nothing left after the fight with Tama. But he found what was there, every last spark, and pushed it into the stone. Lightning crawled over the golden dragons. Their eyes lit up. With a deep roar, the furnace caught, and the whole tower glowed red.</p>
+  <p>Laura gasped. Zav cheered.</p>
+  <p>Laura brought him gold, a little lump of it, the brightest in her treasury. Naya melted it in the dragon furnace and shaped it with lightning, carefully, the way he used to carve ships. When he lifted it out and let it cool, it was a ring.</p>
+  <p>A gold ring with a gentle curve along one side, like a sleeping snake. Like the moon on the Hangkas banners.</p>
+  <p>"The Ring of the Moon," he said quietly.</p>
+  <p>"It's for her, isn't it?" Laura said. "The snake."</p>
+  <p>Naya didn't answer. He didn't have to.</p>
+  <div class="break"></div>
+  <p>That evening, he stood at the edge of Laura's island and looked west.</p>
+  <p>"Here's the plan," he said. "First, we take back the Broccolingdom. Zav, you're coming."</p>
+  <p>"Obviously."</p>
+  <p>"Laura, can your lanterns carry us?"</p>
+  <p>Laura nodded, then went pink again. "I… I'll come too. This time."</p>
+  <p>Zav grinned at her. She looked at her shoes.</p>
+  <p>"Then from there to KZ Roselynd," Naya went on, "and Ayaluna, and Opita. Every kingdom I chart goes into the new ring. By the time I reach the Hangkas, the map will be whole again."</p>
+  <p>"And the centre island?" Zav asked. "The demon?"</p>
+  <p>Naya looked toward the middle of the realm, where something dark was gathering over the water.</p>
+  <p>"That's Neya's," he said. "And she's got it."</p>
+</article>
+
+<article class="chapter sheet" id="ch22" data-act="2">
+  <h2>Chapter 22 — The Great Windmill</h2>
+  <p>The great windmill stood on the eastern hills of the centre island, taller than any tower in Moyin. The red army had turned it into a fortress: soldiers on every floor, cannons on every balcony, and in the cellars beneath it, the prisoners.</p>
+  <p>The red soldiers guarding it never knew what hit them.</p>
+  <p>Jeje's tunnels came up right underneath the windmill, and Jeje's tunnels came with traps. Floors opened under whole squads. Walls swung round and sealed off corridors. Nets dropped from the ceilings. Rolling stones came out of nowhere and flattened the cannons. In ten minutes, half the garrison was gone and most of their weapons and supplies were buried under rubble.</p>
+  <p>"Now," Jeje said.</p>
+  <p>Kaylee's bears smashed up through the floor. Jasmyn's dragons burst out of the hillside and set the upper floors on fire. Talitha's vines tore the doors off their hinges. The armies poured into the windmill, and the red soldiers who were left didn't stand a chance.</p>
+  <p>They found KZ and Maureen in the deepest cellar.</p>
+  <p>Both queens were sitting back to back inside a glowing shield, one half made of rose vines and the other of tulip petals, wound tightly around them. They looked tired and thin, but they were alive. When KZ saw Kaylee's face through the vines, she burst out laughing.</p>
+  <figure>
+    <img src="images/ch22-rose-and-tulip-shield.jpg" alt="KZ and Maureen inside their rose and tulip shield at night">
+  </figure>
+  <p>"Took you long enough!"</p>
+  <p>The shield fell, and Kaylee picked up both of them at once in a giant hug.</p>
+  <p>"We kept ourselves safe," Maureen said, when she could breathe again. "They couldn't touch us through our own magic. But they could still drain it. Every day they'd come and pull a little more out, and put it into their armour and their cannons."</p>
+  <p>KZ's smile faded. "The others weren't so lucky."</p>
+  <p>In the next cellar lay the enchanters who had been taken from Moyin and KZ Roselynd. Most of them were gone. Drained of every bit of magic they'd ever had, until there was nothing left of them.</p>
+  <p>Talitha knelt beside them and was quiet for a long time.</p>
+  <p>Maureen put her hand on KZ's shoulder. "Then let's make sure it means something."</p>
+  <p>The two queens stood up together. KZ raised her rose staff, and Maureen her tulip sceptre, and their magic, real magic, freely given, poured out over everyone in the windmill. Rose armour bloomed over Kaylee's bears. Tulip petals wrapped around Jasmyn's dragons. Every soldier and rider and enchanter glowed pink and red and gold.</p>
+  <p>The red army had been using stolen scraps of this power. This was the real thing.</p>
+  <p>What was left of the garrison fell in minutes. When it was over, the windmill was theirs, every prisoner who could be saved had been saved, and the queens stood together on the top balcony, looking toward the middle of the island.</p>
+  <p>Something was happening there. The sky over the old palace ruins had turned the colour of a bruise.</p>
+  <p>"Neya," Jasmyn said.</p>
+  <p>"Everyone," Kaylee shouted. "Get ready to move!"</p>
+</article>
+
+<article class="chapter sheet" id="ch23" data-act="2">
+  <h2>Chapter 23 — The Black Stone</h2>
+  <p>The ruins of the old palace lay in the very heart of Eastern Moyin, half buried in grass and tulips. Long ago, before Moyin ever took this island, it had been a kingdom of its own. Its queen had worn a black crown.</p>
+  <p>Neya came up out of the ground at its edge with her soldiers behind her.</p>
+  <p>In the middle of the ruins stood a black stone, tall as a person and smooth as glass. Around it, in a circle, stood dozens of enchanters in red robes, chanting. And in front of the stone, with his back to her, stood a man in a long dark coat.</p>
+  <p>The stone was still black. Still quiet. She had made it in time.</p>
+  <p>"Raian," Neya said.</p>
+  <p>He turned around.</p>
+  <p>He looked older than she remembered, and thinner, and very tired. On his hand was a black ring, smooth and worn, so much like Naya's silver one that her stomach twisted. So that was how the red ships sailed. That was how the Grand Map had been wiped.</p>
+  <p>"Empress," he said, and smiled. "You came."</p>
+  <p>"I'm surprised," Neya said. "I really am. I didn't think you'd go this far." She looked at the ring, at the stone, at the enchanters. "You sailed with Naya. You were one of us. And now look at what you've done. Opita. Moyin. All those enchanters." Her voice didn't shake. "I'm sorry, Raian. But I can't forgive this. I have to stop you."</p>
+  <p>The ground behind her rumbled. Her great serpent rose out of the earth, huge and green, its mouth already opening, waiting for her signal.</p>
+  <p>Raian didn't even look at it.</p>
+  <p>"You don't understand," he said gently. "I've been waiting for you."</p>
+  <p>Neya's hand stopped in the air.</p>
+  <p>"I've been trying to wake her for so long. Every spell. Every sacrifice. And she never came." He looked at the stone with something like love. "She didn't want to come back. There was nothing here she cared about. Except one thing." He looked back at Neya. "You. The one she hates more than anything. I just needed you to stand where she could see you."</p>
+  <p>Neya felt cold all over. "Raian…"</p>
+  <p>"Now you're here, and her hatred has something to hold on to." He pulled a knife from his coat. "And there's only one thing left to give her."</p>
+  <p>"Raian, don't!"</p>
+  <p>He pushed the knife into his own heart.</p>
+  <p>He fell against the stone, and the black ring on his finger cracked in half.</p>
+  <p>Far out at sea, all around the island, the red ships suddenly lurched. The calm water under them turned wild, and the currents spun them like leaves.</p>
+  <p>And the black stone began to glow.</p>
+  <p>Not with light. With darkness. Black poured out of it like smoke, and the stone cracked down the middle, and then it burst apart.</p>
+  <figure>
+    <img src="images/ch23a-hanji-returns.jpg" alt="Hanji breaking out of the black stone">
+  </figure>
+  <p>And she stepped out.</p>
+  <div class="break"></div>
+  <p>The power that came off her was like a wave. Most of the red enchanters dropped where they stood. The few who were still on their feet raised their hands and threw everything they had at her: rose magic, tulip magic, all the stolen power of the realm. It wrapped around her like armour, glowing red and pink against the black.</p>
+  <p>Hanji laughed.</p>
+  <p>It was a cold, flat laugh, and it went straight through Neya's bones.</p>
+  <p>At the great windmill, KZ and Maureen grabbed each other's arms. They could feel it, their own magic, twisted and wrapped around something dark. All across the island, red soldiers dropped their weapons and fell to their knees, bowing toward the ruins. Their demon had come back.</p>
+  <p>Then the ground began to shake.</p>
+  <p>It shook harder, and harder, until cracks split the island from one end to the other. With a roar like the end of the world, the centre island broke apart. Great pieces of land tipped and slid, and the sea came rushing in where the ground had been.</p>
+  <p>"Hold on!" Neya shouted.</p>
+  <p>Her great serpent swept around her soldiers and caught them on its back as the ground fell away. Her other serpents rose out of the water and scooped up anyone who'd fallen in. Over by the windmill, Jasmyn's dragons were snatching people out of the air, Talitha's vines were catching others, and Kaylee's bears were holding on to anything that floated.</p>
+  <p>And above it all, floating in the sky, wrapped in black and rose and tulip, Hanji looked down at the wreck of the island and laughed and laughed.</p>
+  <figure>
+    <img src="images/ch23b-the-island-breaks.jpg" alt="The centre island breaking apart">
+  </figure>
+  <p>Then she looked at Neya.</p>
+  <p>"Hello again, little snake."</p>
+</article>
+
+<article class="chapter sheet" id="ch24" data-act="2">
+  <h2>Chapter 24 — The Boring Demon</h2>
+  <p>Hanji raised one finger, and a beam of pure black shot out of it.</p>
+  <p>Neya threw herself sideways. The beam hit the water where she'd been standing, and the water didn't splash. It simply vanished, leaving a hole in the sea that slowly filled back in.</p>
+  <p>Anything the black touched was just… gone.</p>
+  <p>Neya fired back with a blast of green serpent magic. It hit Hanji square in the chest, and the rose and tulip armour flared pink and swallowed it whole.</p>
+  <p>Hanji smiled. "Is that it?"</p>
+  <p>Another beam. Then another. Neya dodged and blocked and dodged again, but she couldn't fight properly. Half her power was holding up her serpents, and her serpents were holding up her soldiers. If she let go, they would drown.</p>
+  <p>So for the first time in a very, very long time, Neya reached into her cloak and drew her wand.</p>
+  <p>It was long and dark green, carved like a coiled snake, and she only ever used it against someone strong enough to match her. Nobody had been, for a long time.</p>
+  <p>She cast spell after spell with it. Green fire, serpent fangs of light, a whip of lightning that cracked across the sky. Most of them missed, because she had to keep turning to block another black beam, or to pull another soldier out of the water. The ones that hit just bounced off the enchanted armour.</p>
+  <p>She's boring, Neya thought, gritting her teeth. Pure black. That's her whole power. Make things disappear. Her whole plan is she's jealous and wants everyone to suffer. Everything about her is boring.</p>
+  <p>Boring, and very, very strong.</p>
+  <p>"Why are you holding back?" Hanji shouted. "Look at you! Protecting your little soldiers. Let them drown! Fight me with everything you've got, or are you still too scared?"</p>
+  <p>Neya didn't answer. She blocked another beam. Her arm was shaking.</p>
+  <div class="break"></div>
+  <p>Then the sky filled with dragons.</p>
+  <p>Jasmyn came first, her dragon glowing with tulip armour, and behind her the whole of her dragon army. On the water below, Kaylee rode in on her bear, and Talitha's vines raced out across the waves in every direction. And on Jasmyn's dragon, right behind her, sat KZ and Maureen.</p>
+  <p>"Sorry we're late!" Jasmyn shouted. "We had to put everybody somewhere safe!"</p>
+  <p>Jeje's maze. Every last soldier from the windmill was safe underground.</p>
+  <p>"Your turn!" Kaylee yelled up at her. "Let go! We've got them!"</p>
+  <p>And they did. Jasmyn's dragons swooped down and lifted Neya's soldiers off the serpents' backs and carried them away to safety. Kaylee put both hands into the sea, and her awakened tree magic burst out of her, roots and trunks, giant trees shooting up out of the water, wrapping around the broken pieces of the island and holding them together. Talitha raised her staff, and a shield of glowing blue leaves wrapped around Neya.</p>
+  <p>And KZ and Maureen reached out together and gave Neya their magic. Not stolen. Given. Rose and tulip armour bloomed over her, shining pink and red and gold.</p>
+  <p>Neya felt her whole body get lighter. For the first time, both her hands were free.</p>
+  <p>Hanji had gone very still.</p>
+  <p>"Why?" she hissed. "Why would you help her? She's pathetic. She's a liar. She smiles at all of you and tells you you're her friends, and you believe her!" Her voice rose to a scream. "She's a snake! She's always been a snake! Come over to me. I'll give you power you've never dreamed of. Don't waste yourselves on her!"</p>
+  <p>Nobody moved.</p>
+  <p>"Fine," Hanji spat. She raised her finger at the queens, and black light gathered at its tip, more than ever before.</p>
+  <p>Then Neya was there.</p>
+  <p>She was standing right in front of Hanji's finger, so close the black light lit her face.</p>
+  <p>"Your fight," Neya said quietly, "is with me."</p>
+  <div class="break"></div>
+  <p>Hanji fled.</p>
+  <p>She shot up into the sky, but Neya's great serpent was already rising beneath her, and Neya rode on its head, up through the clouds, after her. Hanji fired beam after beam down at her. Neya didn't dodge any more. The rose and tulip armour took them, and she kept climbing.</p>
+  <p>They broke out above the clouds, into the light of the moon.</p>
+  <p>Neya raised her wand.</p>
+  <p>"Avada Kedavra."</p>
+  <p>A blast of green light shot out of the wand and hit Hanji in the chest. Her enchanted armour cracked like glass, then shattered completely. Rose petals and tulip petals scattered across the sky.</p>
+  <figure>
+    <img src="images/ch24a-the-killing-spell.jpg" alt="Neya on her serpent casting the killing spell at Hanji">
+  </figure>
+  <p>Hanji had time to look down at herself, at her bare black shape, in total shock.</p>
+  <p>Then Neya's great serpent opened its jaws and swallowed her whole.</p>
+  <p>For a moment, everything was quiet.</p>
+  <p>Then the serpent bulged. Light leaked out between its scales. Black light.</p>
+  <p>"If I go," Hanji's voice screamed from inside it, "you all go with me!"</p>
+  <p>The great serpent exploded.</p>
+  <p>It didn't die. It was never alive to begin with, only Neya's power in serpent form. It burst apart into green light. But in the middle of the green light was Hanji, swelling bigger and bigger, glowing black and white, about to explode and take the whole of the centre of the realm with her.</p>
+  <p>Something gold flew up past Neya.</p>
+  <p>Jeje. She'd leapt straight off the back of a dragon with her green staff raised.</p>
+  <p>"Not today!" she shouted, and slammed the staff down.</p>
+  <p>Gold lines shot out of it, the same lines as the maze. Walls, corners, turns and dead ends, folding in on themselves around Hanji, tighter and tighter, until she was trapped inside a maze so small and so twisting that she couldn't find her way out. The lines snapped together into a cube of gold and green, no bigger than a box of tea.</p>
+  <p>The black light inside it flickered, and went still.</p>
+  <p>The cube dropped out of the sky, and Neya caught it.</p>
+  <figure>
+    <img src="images/ch24b-the-gold-cube.jpg" alt="Jeje sealing Hanji in the gold cube">
+  </figure>
+  <div class="break"></div>
+  <p>Slowly, everyone came back down to what was left of the island.</p>
+  <p>The armies came up out of Jeje's maze. Kaylee's trees still held the broken land together. Jasmyn's dragons settled on the shore. The red soldiers who were left just sat on the ground, not even trying to fight any more. Talitha's healers started walking among the wounded. KZ and Maureen held hands.</p>
+  <p>Neya sat on a rock at the edge of the water, holding the little gold cube in her lap.</p>
+  <p>Jeje sat down next to her. "Boring?" she asked.</p>
+  <p>"So boring," Neya said, and they both started laughing, and couldn't stop.</p>
+  <p>The clouds pulled apart, and moonlight fell over all of them.</p>
+  <p>It was over.</p>
+  <p>All that was left was the Grand Map.</p>
+</article>
+
+<article class="chapter sheet" id="ch25" data-act="2">
+  <h2>Chapter 25 — Two Rings</h2>
+  <p>The day after the battle, Naya sailed into Opita.</p>
+  <p>The candy towers were standing again. They weren't finished, but they were standing, and there were flags on them, and people in the streets. Opi met him at the dock and hugged him, and then hit him on the arm for looking so beaten up, and then hugged him again.</p>
+  <p>The last few days had been a blur. With Zav and Laura, he had taken back the Broccolingdom. Zav's people came home on Laura's lanterns, and Laura actually waved at the crowd, a little. Then KZ Roselynd, where Aya was waiting with her elephants and a hundred questions. And now Opita. In every kingdom, he had stood at the shore and charted the land and the water, and in every kingdom, the map had gone into the gold ring.</p>
+  <p>It was done. The new ring was full.</p>
+  <p>Almost everyone was home now. The queens were back in their kingdoms, rebuilding. The ducks were flying. The realm was starting to breathe.</p>
+  <p>But Naya had learned one more thing.</p>
+  <p>On KZ Roselynd's northern shore, he and Aya had caught the last of the red ship captains, the ones who'd stayed behind when the fleets sailed south. They had been terrified. Their emperor's ring had cracked, and they said the sea had gone wild underneath them the moment it happened. They'd been sailing in circles ever since.</p>
+  <p>And when he asked them where they had come from, they told him.</p>
+  <p>Bayasura.</p>
+  <p>A land far to the north, past the edge of every map. A land full of people who worshipped devils and demons. That was where Raian had gone, all those years ago. That was where he'd found his army.</p>
+  <p>And if there was one Raian there, there could be others.</p>
+  <p>Naya stood at the end of Opi's dock and looked north for a long time.</p>
+  <p>Somebody needed to go there. Somebody needed to find out what was waiting in Bayasura before it came looking for the realm again. And he was the only person in the realm who could sail anywhere without a map.</p>
+  <p>But going meant leaving. For a long time. Maybe a very long time.</p>
+  <p>"Opi," he said. "Can I borrow a ship?"</p>
+  <div class="break"></div>
+  <p>Neya knew the moment the sea changed.</p>
+  <p>She was standing on the balcony of her sea palace at the Hangkas, the gold cube on the table beside her, when the wild currents in the bay went smooth. Just like that. The waves lay down, the winds turned the right way round, and far out in the harbour, a fishing boat that hadn't moved in weeks raised its sail and set off.</p>
+  <p>The map was back.</p>
+  <p>Which meant he was nearly here.</p>
+  <p>She was waiting at the end of the dock when Opi's little candy-pink ship sailed in. Naya jumped off before it had even stopped.</p>
+  <p>They didn't say anything at first. She just held on to him, and he held on to her, for a very long time.</p>
+  <p>Then they sat on the end of the dock with their feet over the water and told each other everything. She told him about the ambush at sea, and the maze, and Hanji. He told her about his clouds, and Tama, and falling out of the sky. She laughed so hard at Bina's letter that she nearly fell in the water. He went quiet when she told him about Raian.</p>
+  <p>"He was my friend," he said after a while. "A long time ago."</p>
+  <p>"I know," she said.</p>
+  <p>Then he told her about Bayasura.</p>
+  <p>She listened all the way to the end. She looked out at the sea for a long moment. Then she said, "You have to go."</p>
+  <p>He looked at her. "Neya…"</p>
+  <p>"You have to go," she said again, more gently. "Somebody has to, and you're the only one who can. And you want to. I can see it on your face. You've been looking north since you sat down." She bumped his shoulder with hers. "Besides. Pirates aren't supposed to stay in one place anyway."</p>
+  <p>He laughed, but his eyes were wet.</p>
+  <p>"Follow your heart," she said. "That's what you always do. It's one of the things I love about you."</p>
+  <p>He took a long breath. "Not yet, though," he said. "I'm going home first. My crews have been at sea since the war started, and half my islands still don't know if I'm alive. And look at this place." He nodded at the harbour, at the burnt sails and the broken docks. "The realm's barely standing. I'm not leaving it like this."</p>
+  <p>"So when?"</p>
+  <p>"Two months," he said. "I'll help everyone rebuild. Carry the timber, chase off the last of the red ships, whatever needs doing. Then I'll go."</p>
+  <p>Two months. It sounded like a long time. They both knew it wasn't.</p>
+  <p>She picked up the gold cube and put it in his hands. "Then take her with you when you go. Keep her as far away from this realm as you can."</p>
+  <p>"I will."</p>
+  <p>Then he reached into his coat and took out two rings.</p>
+  <p>The silver Ring of the Sea, old and worn and empty. And the gold Ring of the Moon, shining and new, with the little curve along its side like a sleeping snake.</p>
+  <p>He put them both in her hand and closed her fingers around them.</p>
+  <p>"The map's in the gold one," he said. "All of it. Every kingdom. The silver one's empty, but I want you to have it anyway." He held on to her hand. "The realm's yours, Neya. It always was. I trust you to keep it safe."</p>
+  <p>She looked down at the two rings for a long time. Then she put them on, both of them, side by side.</p>
+  <div class="break"></div>
+  <p>They stayed on the dock until the sun went down.</p>
+  <p>Neither of them said much. There would be time for that, they told themselves. Two whole months of it. But they both kept counting anyway, quietly, the way you count the last pages of a book you don't want to finish.</p>
+  <p>She leaned her head on his shoulder. He rested his cheek on her hair. The sky went orange, then pink, then gold, and her serpents rose out of the water and coiled quietly around the dock beside them, the way they always did when she was sad.</p>
+  <figure>
+    <img src="images/ch25a-the-goodbye.jpg" alt="Neya and Naya together on the Hangkas dock at sunset">
+  </figure>
+  <p>"I'm not gone yet," he said softly.</p>
+  <p>"I know," she said. "I'm just practising."</p>
+  <p>He laughed, and she laughed, and then neither of them was laughing, and they just held on.</p>
+  <p>In the morning, he sailed west for home. Not far. Not yet. He'd be back in a few days with a ship full of timber and a crew full of complaints, and the two of them would fix the realm together, one kingdom at a time, for as long as they had.</p>
+  <p>Neya watched his sails until they slipped over the edge of the sea. Then she looked down at her hand.</p>
+  <p>Silver and gold. The sea and the moon. They caught the morning light and shone over the Hangkas, over the harbour and the serpent towers and the boats setting out again on a calm, kind sea.</p>
+  <figure>
+    <img src="images/ch25b-the-rings.jpg" alt="Neya's hand wearing the silver and gold rings over the Hangkas">
+  </figure>
+  <p>The realm was safe.</p>
+  <p>For now, that was enough.</p>
+  <p class="the-end">To be continued…</p>
+</article>
+
+<!-- ACT 2 END -->
+
+</main>
+
+<script>
+  // Build the contents page, the floating menu and each chapter's Previous/Next
+  // links from the chapters themselves, so adding a chapter needs no other edits.
+  const chapters = [...document.querySelectorAll("article.chapter")];
+  const contents = document.getElementById("contents");
+
+  function link(href, text) {
+    const a = document.createElement("a");
+    a.href = href;
+    a.textContent = text;
+    return a;
+  }
+
+  contents.innerHTML = "<h2>Contents</h2>";
+  const front = document.createElement("ol");
+  front.appendChild(document.createElement("li")).appendChild(link("#lore", "The Lore Book & the Realm"));
+  contents.appendChild(front);
+
+  for (const act of ["1", "2"]) {
+    const h = document.createElement("h3");
+    h.textContent = "Act " + act;
+    contents.appendChild(h);
+    const ol = document.createElement("ol");
+    for (const ch of chapters.filter(c => c.dataset.act === act)) {
+      ol.appendChild(document.createElement("li")).appendChild(link("#" + ch.id, ch.querySelector("h2").textContent));
+    }
+    contents.appendChild(ol);
+  }
+
+  chapters.forEach((ch, i) => {
+    const nav = document.createElement("div");
+    nav.className = "chapter-nav";
+    nav.appendChild(i > 0 ? link("#" + chapters[i - 1].id, "← Previous") : link("#contents", "← Contents"));
+    const next = i < chapters.length - 1 ? link("#" + chapters[i + 1].id, "Next →") : link("#contents", "Contents ↑");
+    next.className = "next";
+    nav.appendChild(next);
+    ch.appendChild(nav);
+  });
+
+  const menu = document.getElementById("menu");
+  const list = contents.cloneNode(true);
+  list.removeAttribute("id");
+  menu.appendChild(list);
+  menu.addEventListener("click", e => { if (e.target.closest("a")) toggleMenu(); });
+
+  function toggleMenu() {
+    menu.classList.toggle("open");
+  }
+</script>
+<script src="map.js"></script>
+</body>
+</html>
